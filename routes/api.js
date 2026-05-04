@@ -6,6 +6,7 @@ const { generateQRBuffer, generateQRDataURL } = require('../utils/qr');
 const { isEmailConfigured, sendQRCodeEmail } = require('../utils/email');
 const { stringify } = require('csv-stringify/sync');
 const ExcelJS = require('exceljs');
+const archiver = require('archiver');
 
 function getBaseUrl(req) {
   return process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
@@ -385,6 +386,83 @@ router.get('/analytics/data', (req, res) => {
   }
 
   res.json({ totals, eventStats, chart: { days, counts } });
+});
+
+// GET /api/events/:id/badges/illustrator — ZIP with CSV + QR PNGs for Illustrator Data Merge
+router.get('/events/:id/badges/illustrator', async (req, res) => {
+  const db = getDb();
+  const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  const registrations = db.prepare(
+    'SELECT * FROM registrations WHERE event_id = ? AND waitlisted = 0 ORDER BY full_name'
+  ).all(req.params.id);
+
+  const baseUrl = getBaseUrl(req);
+  const eventDate = event.date
+    ? new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    : '';
+
+  // Build CSV rows — @qr_image column tells Illustrator to treat it as an image variable
+  const csvRows = registrations.map(r => ({
+    name: r.full_name,
+    company: r.company || '',
+    email: r.email,
+    phone: r.phone || '',
+    event_name: event.name,
+    event_date: eventDate,
+    event_location: event.location || '',
+    '@qr_image': `qr_${r.id}.png`
+  }));
+
+  const csv = stringify(csvRows, { header: true });
+
+  // Stream a ZIP
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${event.slug}-illustrator-export.zip"`);
+
+  const archive = archiver('zip', { zlib: { level: 6 } });
+  archive.pipe(res);
+
+  // Add the Data Merge CSV
+  archive.append(csv, { name: 'data.csv' });
+
+  // Add a README
+  const readme = [
+    `Illustrator Data Merge Export — ${event.name}`,
+    '='.repeat(50),
+    '',
+    'HOW TO USE:',
+    '1. Open your Illustrator badge template',
+    '2. Go to Window > Utilities > Variables  (or Window > Data Merge in newer versions)',
+    '3. Click the menu icon > Select Data Source',
+    '4. Choose "data.csv" from this folder',
+    '5. Make sure this folder also contains all the qr_*.png files',
+    '6. Your template placeholders should match these column names:',
+    '   <<name>>           — Attendee full name',
+    '   <<company>>        — Company / organisation',
+    '   <<email>>          — Email address',
+    '   <<phone>>          — Phone number',
+    '   <<event_name>>     — Event name',
+    '   <<event_date>>     — Event date (formatted)',
+    '   <<event_location>> — Event location',
+    '   <<@qr_image>>      — QR code image (link a rectangle/image frame to this)',
+    '',
+    '7. Click "Create Merged Document" to generate all badges at once',
+    '',
+    `Total attendees: ${registrations.length}`,
+  ].join('\n');
+
+  archive.append(readme, { name: 'README.txt' });
+
+  // Add each QR code PNG
+  for (const r of registrations) {
+    const qrUrl = `${baseUrl}/checkin/${r.qr_token}`;
+    const qrBuffer = await generateQRBuffer(qrUrl);
+    archive.append(qrBuffer, { name: `qr_${r.id}.png` });
+  }
+
+  await archive.finalize();
 });
 
 module.exports = router;
