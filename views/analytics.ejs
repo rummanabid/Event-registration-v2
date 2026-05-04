@@ -32,9 +32,19 @@
       <div class="page-header">
         <div>
           <h1>Analytics</h1>
-          <p class="text-muted">Registration and attendance overview</p>
+          <p class="text-muted" id="analytics-subtitle">Registration and attendance overview</p>
         </div>
-        <a href="/admin" class="btn btn-outline">← Admin</a>
+        <div style="display:flex;gap:10px;align-items:center">
+          <% if (events.length > 1) { %>
+          <select id="event-filter" onchange="onEventFilter(this.value)" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:.9rem;background:#fff;cursor:pointer">
+            <option value="">All Events</option>
+            <% events.forEach(e => { %>
+            <option value="<%= e.id %>"><%= e.name %></option>
+            <% }) %>
+          </select>
+          <% } %>
+          <a href="/admin" class="btn btn-outline">← Admin</a>
+        </div>
       </div>
 
       <!-- KPI Cards -->
@@ -48,13 +58,13 @@
       <!-- Charts -->
       <div class="charts-grid">
         <div class="card chart-card">
-          <div class="card-header"><h2>Registrations — Last 14 Days</h2></div>
+          <div class="card-header"><h2 id="reg-chart-title">Registrations — Last 14 Days</h2></div>
           <div class="card-body">
             <canvas id="registrations-chart" height="120"></canvas>
           </div>
         </div>
         <div class="card chart-card">
-          <div class="card-header"><h2>Overall Check-in Rate</h2></div>
+          <div class="card-header"><h2 id="donut-chart-title">Overall Check-in Rate</h2></div>
           <div class="card-body chart-body-center">
             <canvas id="checkin-rate-chart" height="180"></canvas>
             <div class="chart-center-label" id="checkin-rate-label"></div>
@@ -64,7 +74,7 @@
 
       <!-- Per-event table -->
       <div class="card">
-        <div class="card-header"><h2>Event Breakdown</h2></div>
+        <div class="card-header"><h2 id="event-table-title">Event Breakdown</h2></div>
         <div class="card-body">
           <div id="event-table-container">
             <div class="empty-state"><p>Loading...</p></div>

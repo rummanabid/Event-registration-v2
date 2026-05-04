@@ -1,14 +1,36 @@
-async function loadAnalytics() {
-  const res = await fetch('/api/analytics/data');
+let registrationsChart = null;
+let checkinChart = null;
+let autoRefreshTimer = null;
+
+async function loadAnalytics(eventId) {
+  const url = eventId ? `/api/analytics/data?event_id=${eventId}` : '/api/analytics/data';
+  const res = await fetch(url);
+  if (!res.ok) return;
   const data = await res.json();
 
-  renderKPIs(data.totals);
-  renderRegistrationsChart(data.chart);
+  updateSubtitle(data.totals, eventId);
+  renderKPIs(data.totals, eventId);
+  renderRegistrationsChart(data.chart, data.totals);
   renderCheckinDonut(data.totals);
-  renderEventTable(data.eventStats);
+  renderEventTable(data.eventStats, eventId);
 }
 
-function renderKPIs(totals) {
+function updateSubtitle(totals, eventId) {
+  const el = document.getElementById('analytics-subtitle');
+  if (!el) return;
+  el.textContent = eventId && totals.event_name
+    ? `Stats for: ${totals.event_name}`
+    : 'Registration and attendance overview';
+
+  const regTitle = document.getElementById('reg-chart-title');
+  const donutTitle = document.getElementById('donut-chart-title');
+  const tableTitle = document.getElementById('event-table-title');
+  if (regTitle) regTitle.textContent = 'Registrations — Last 14 Days';
+  if (donutTitle) donutTitle.textContent = eventId ? 'Event Check-in Rate' : 'Overall Check-in Rate';
+  if (tableTitle) tableTitle.textContent = eventId ? 'Event Details' : 'Event Breakdown';
+}
+
+function renderKPIs(totals, eventId) {
   const rate = totals.total_registrations > 0
     ? Math.round((totals.total_checked_in / totals.total_registrations) * 100)
     : 0;
@@ -20,8 +42,8 @@ function renderKPIs(totals) {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       </div>
       <div class="kpi-body">
-        <div class="kpi-value">${totals.total_events}</div>
-        <div class="kpi-label">Total Events</div>
+        <div class="kpi-value">${eventId ? 1 : totals.total_events}</div>
+        <div class="kpi-label">${eventId ? 'Selected Event' : 'Total Events'}</div>
       </div>
     </div>
     <div class="kpi-card">
@@ -30,7 +52,7 @@ function renderKPIs(totals) {
       </div>
       <div class="kpi-body">
         <div class="kpi-value">${totals.total_registrations}</div>
-        <div class="kpi-label">Total Registrations</div>
+        <div class="kpi-label">Registrations</div>
         ${totals.total_waitlisted > 0 ? `<div class="kpi-sub">${totals.total_waitlisted} on waitlist</div>` : ''}
       </div>
     </div>
@@ -56,8 +78,10 @@ function renderKPIs(totals) {
 }
 
 function renderRegistrationsChart(chart) {
-  const ctx = document.getElementById('registrations-chart').getContext('2d');
-  new Chart(ctx, {
+  if (registrationsChart) { registrationsChart.destroy(); registrationsChart = null; }
+  const canvas = document.getElementById('registrations-chart');
+  const ctx = canvas.getContext('2d');
+  registrationsChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: chart.days,
@@ -85,14 +109,16 @@ function renderRegistrationsChart(chart) {
 }
 
 function renderCheckinDonut(totals) {
+  if (checkinChart) { checkinChart.destroy(); checkinChart = null; }
   const notCheckedIn = totals.total_registrations - totals.total_checked_in;
-  const ctx = document.getElementById('checkin-rate-chart').getContext('2d');
+  const canvas = document.getElementById('checkin-rate-chart');
+  const ctx = canvas.getContext('2d');
   const rate = totals.total_registrations > 0
     ? Math.round((totals.total_checked_in / totals.total_registrations) * 100) : 0;
 
   document.getElementById('checkin-rate-label').textContent = `${rate}%`;
 
-  new Chart(ctx, {
+  checkinChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
       labels: ['Checked In', 'Not Yet'],
@@ -112,9 +138,9 @@ function renderCheckinDonut(totals) {
   });
 }
 
-function renderEventTable(eventStats) {
+function renderEventTable(eventStats, eventId) {
   const container = document.getElementById('event-table-container');
-  if (eventStats.length === 0) {
+  if (!eventStats || eventStats.length === 0) {
     container.innerHTML = '<div class="empty-state"><p>No events yet.</p></div>';
     return;
   }
@@ -160,6 +186,11 @@ function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-loadAnalytics();
-// Refresh every 30 seconds
-setInterval(loadAnalytics, 30000);
+function onEventFilter(eventId) {
+  clearInterval(autoRefreshTimer);
+  loadAnalytics(eventId);
+  autoRefreshTimer = setInterval(() => loadAnalytics(eventId), 30000);
+}
+
+loadAnalytics('');
+autoRefreshTimer = setInterval(() => loadAnalytics(''), 30000);

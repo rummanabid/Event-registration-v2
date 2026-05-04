@@ -801,9 +801,12 @@ textarea { resize: vertical; }
 
 .download-section { width: 100%; }
 
-.email-section.card { padding: 0; }
-.email-section .card-body { padding: 20px; }
-.email-section h3 { font-size: .95rem; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+.share-section.card { padding: 20px; }
+.share-section h3 { font-size: .95rem; font-weight: 700; color: var(--navy); margin-bottom: 14px; }
+.share-buttons { display: flex; flex-direction: column; gap: 10px; }
+.btn-share { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: .9rem; }
+.btn-whatsapp { color: #16a34a; border-color: #16a34a; }
+.btn-whatsapp:hover { background: #16a34a; color: #fff; border-color: #16a34a; }
 
 .event-info.card {
   padding: 20px;

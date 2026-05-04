@@ -71,7 +71,9 @@ router.get('/admin', requirePin, (req, res) => {
 
 // Analytics
 router.get('/analytics', requirePin, (req, res) => {
-  res.render('analytics');
+  const db = getDb();
+  const events = db.prepare('SELECT id, name FROM events ORDER BY created_at DESC').all();
+  res.render('analytics', { events });
 });
 
 // Form Builder

@@ -343,36 +343,70 @@ router.get('/events/:id/checkin-count', (req, res) => {
   res.json({ total: row.total, checkedIn: row.checked_in || 0 });
 });
 
-// GET /api/analytics/data
+// GET /api/analytics/data?event_id=<id>
 router.get('/analytics/data', (req, res) => {
   const db = getDb();
+  const { event_id } = req.query;
 
-  const totals = db.prepare(`
-    SELECT
-      (SELECT COUNT(*) FROM events) as total_events,
-      (SELECT COUNT(*) FROM registrations WHERE waitlisted = 0) as total_registrations,
-      (SELECT COUNT(*) FROM registrations WHERE checked_in = 1 AND waitlisted = 0) as total_checked_in,
-      (SELECT COUNT(*) FROM registrations WHERE waitlisted = 1) as total_waitlisted
-  `).get();
+  let totals, eventStats, dailyRaw;
 
-  const eventStats = db.prepare(`
-    SELECT e.id, e.name, e.date, e.capacity,
-      COUNT(CASE WHEN r.waitlisted = 0 THEN 1 END) as registrations,
-      COUNT(CASE WHEN r.checked_in = 1 AND r.waitlisted = 0 THEN 1 END) as checked_in,
-      COUNT(CASE WHEN r.waitlisted = 1 THEN 1 END) as waitlisted
-    FROM events e
-    LEFT JOIN registrations r ON r.event_id = e.id
-    GROUP BY e.id
-    ORDER BY e.created_at DESC
-  `).all();
+  if (event_id) {
+    const ev = db.prepare('SELECT * FROM events WHERE id = ?').get(event_id);
+    if (!ev) return res.status(404).json({ error: 'Event not found' });
 
-  // Last 14 days of registrations
-  const dailyRaw = db.prepare(`
-    SELECT date(created_at) as day, COUNT(*) as count
-    FROM registrations
-    WHERE waitlisted = 0 AND created_at >= date('now', '-13 days')
-    GROUP BY day ORDER BY day
-  `).all();
+    const row = db.prepare(`
+      SELECT
+        1 as total_events,
+        COUNT(CASE WHEN waitlisted = 0 THEN 1 END) as total_registrations,
+        COUNT(CASE WHEN checked_in = 1 AND waitlisted = 0 THEN 1 END) as total_checked_in,
+        COUNT(CASE WHEN waitlisted = 1 THEN 1 END) as total_waitlisted
+      FROM registrations WHERE event_id = ?
+    `).get(event_id);
+
+    totals = { ...row, event_name: ev.name };
+
+    eventStats = [db.prepare(`
+      SELECT e.id, e.name, e.date, e.capacity,
+        COUNT(CASE WHEN r.waitlisted = 0 THEN 1 END) as registrations,
+        COUNT(CASE WHEN r.checked_in = 1 AND r.waitlisted = 0 THEN 1 END) as checked_in,
+        COUNT(CASE WHEN r.waitlisted = 1 THEN 1 END) as waitlisted
+      FROM events e LEFT JOIN registrations r ON r.event_id = e.id
+      WHERE e.id = ? GROUP BY e.id
+    `).get(event_id)];
+
+    dailyRaw = db.prepare(`
+      SELECT date(created_at) as day, COUNT(*) as count
+      FROM registrations
+      WHERE event_id = ? AND waitlisted = 0 AND created_at >= date('now', '-13 days')
+      GROUP BY day ORDER BY day
+    `).all(event_id);
+  } else {
+    totals = db.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM events) as total_events,
+        (SELECT COUNT(*) FROM registrations WHERE waitlisted = 0) as total_registrations,
+        (SELECT COUNT(*) FROM registrations WHERE checked_in = 1 AND waitlisted = 0) as total_checked_in,
+        (SELECT COUNT(*) FROM registrations WHERE waitlisted = 1) as total_waitlisted
+    `).get();
+
+    eventStats = db.prepare(`
+      SELECT e.id, e.name, e.date, e.capacity,
+        COUNT(CASE WHEN r.waitlisted = 0 THEN 1 END) as registrations,
+        COUNT(CASE WHEN r.checked_in = 1 AND r.waitlisted = 0 THEN 1 END) as checked_in,
+        COUNT(CASE WHEN r.waitlisted = 1 THEN 1 END) as waitlisted
+      FROM events e
+      LEFT JOIN registrations r ON r.event_id = e.id
+      GROUP BY e.id
+      ORDER BY e.created_at DESC
+    `).all();
+
+    dailyRaw = db.prepare(`
+      SELECT date(created_at) as day, COUNT(*) as count
+      FROM registrations
+      WHERE waitlisted = 0 AND created_at >= date('now', '-13 days')
+      GROUP BY day ORDER BY day
+    `).all();
+  }
 
   const days = [], counts = [];
   for (let i = 13; i >= 0; i--) {
