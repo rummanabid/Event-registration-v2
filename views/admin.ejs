@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard — Events QR Check-in</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="4" height="4"/>
+          <rect x="9" y="14" width="4" height="4"/>
+        </svg>
+        Events QR Check-in
+      </a>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="/admin" class="active">Admin</a>
+        <a href="/scan">Scanner</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="admin-page">
+    <div class="container">
+      <div class="page-header">
+        <h1>Admin Dashboard</h1>
+        <p class="text-muted">Create and manage events, view registrations, export data.</p>
+      </div>
+
+      <!-- Create Event -->
+      <section class="card" id="create-event">
+        <div class="card-header">
+          <h2>Create New Event</h2>
+        </div>
+        <div class="card-body">
+          <form id="create-event-form" class="form-row">
+            <div class="form-group flex-2">
+              <label for="new-name">Event Name <span class="required">*</span></label>
+              <input type="text" id="new-name" name="name" placeholder="e.g. Tech Summit 2025" required />
+            </div>
+            <div class="form-group">
+              <label for="new-date">Date</label>
+              <input type="date" id="new-date" name="date" />
+            </div>
+            <div class="form-group flex-2">
+              <label for="new-location">Location</label>
+              <input type="text" id="new-location" name="location" placeholder="e.g. Convention Center, NYC" />
+            </div>
+            <div class="form-group form-group-submit">
+              <button type="submit" class="btn btn-primary">Create Event</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Events List -->
+      <section class="card" id="events-list">
+        <div class="card-header">
+          <h2>Events</h2>
+          <span class="badge"><%= events.length %> events</span>
+        </div>
+        <div class="card-body" id="events-container">
+          <% if (events.length === 0) { %>
+          <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <p>No events yet. Create your first event above.</p>
+          </div>
+          <% } %>
+          <% events.forEach(event => { %>
+          <div class="event-admin-card" id="event-<%= event.id %>" data-event-id="<%= event.id %>">
+            <div class="event-admin-header">
+              <div class="event-admin-info">
+                <h3><%= event.name %></h3>
+                <div class="event-meta">
+                  <% if (event.date) { %><span><%= formatDate(event.date) %></span><% } %>
+                  <% if (event.location) { %><span><%= event.location %></span><% } %>
+                  <span class="text-muted">/<%= event.slug %></span>
+                </div>
+              </div>
+              <div class="event-stats-inline">
+                <div class="stat-box">
+                  <strong><%= event.registration_count %></strong>
+                  <span>registered</span>
+                </div>
+                <div class="stat-box stat-box-green">
+                  <strong><%= event.checked_in_count %></strong>
+                  <span>checked in</span>
+                </div>
+              </div>
+            </div>
+            <div class="event-admin-actions">
+              <button class="btn btn-sm btn-outline btn-edit" onclick="startEditEvent('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>', '<%= event.date || "" %>', '<%= (event.location || "").replace(/'/g, "\\'") %>')">Edit</button>
+              <a href="/form-builder/<%= event.id %>" class="btn btn-sm btn-outline">Form Builder</a>
+              <button class="btn btn-sm btn-outline" onclick="showEmbed('<%= event.id %>', '<%= event.slug %>')">Embed Form</button>
+              <a href="/embed?event=<%= event.slug %>" class="btn btn-sm btn-outline" target="_blank">Registration Form</a>
+              <button class="btn btn-sm btn-outline btn-view-regs" onclick="loadRegistrations('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>')">View Registrations</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteEvent('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>')">Delete</button>
+            </div>
+            <!-- Edit form (hidden) -->
+            <div class="edit-form hidden" id="edit-form-<%= event.id %>">
+              <div class="form-row">
+                <div class="form-group flex-2">
+                  <label>Event Name</label>
+                  <input type="text" id="edit-name-<%= event.id %>" value="<%= event.name %>" />
+                </div>
+                <div class="form-group">
+                  <label>Date</label>
+                  <input type="date" id="edit-date-<%= event.id %>" value="<%= event.date || '' %>" />
+                </div>
+                <div class="form-group flex-2">
+                  <label>Location</label>
+                  <input type="text" id="edit-location-<%= event.id %>" value="<%= event.location || '' %>" />
+                </div>
+                <div class="form-group form-group-submit">
+                  <button class="btn btn-primary btn-sm" onclick="saveEvent('<%= event.id %>')">Save</button>
+                  <button class="btn btn-outline btn-sm" onclick="cancelEdit('<%= event.id %>')">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <% }) %>
+        </div>
+      </section>
+
+      <!-- Registrations Table -->
+      <section class="card" id="registrations-section">
+        <div class="card-header">
+          <h2>Registrations</h2>
+          <div class="card-header-actions">
+            <select id="event-filter" onchange="loadRegistrations(this.value, this.options[this.selectedIndex].text)">
+              <option value="">All Events</option>
+              <% events.forEach(e => { %>
+              <option value="<%= e.id %>"><%= e.name %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-toolbar">
+            <input type="text" id="reg-search" placeholder="Search by name or email..." oninput="filterRegs(this.value)" />
+            <div class="export-buttons" id="export-buttons" style="display:none">
+              <button class="btn btn-sm btn-outline" onclick="exportData('csv')">⬇ CSV</button>
+              <button class="btn btn-sm btn-outline" onclick="exportData('xlsx')">⬇ Excel</button>
+            </div>
+          </div>
+          <div id="registrations-table-container">
+            <div class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <p>Select an event above to view registrations.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Embed Modal -->
+  <div id="embed-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeModal('embed-modal')"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Embed Registration Form</h3>
+        <button onclick="closeModal('embed-modal')" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted">Copy and paste this code into your website to embed the registration form:</p>
+        <div class="code-block">
+          <textarea id="embed-code" readonly rows="4"></textarea>
+          <button class="btn btn-primary btn-sm" onclick="copyEmbed()">Copy Code</button>
+        </div>
+        <div class="mt-2">
+          <a id="embed-preview-link" href="#" target="_blank" class="btn btn-outline btn-sm">Preview Form</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <p>Events QR Check-in &copy; <%= new Date().getFullYear() %></p>
+  </footer>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Check-in — Events QR Check-in</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="4" height="4"/>
+          <rect x="9" y="14" width="4" height="4"/>
+        </svg>
+        Events QR Check-in
+      </a>
+    </div>
+  </header>
+
+  <main class="checkin-page">
+    <div class="checkin-container">
+      <% if (status === 'success') { %>
+      <div class="checkin-card checkin-success">
+        <div class="checkin-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h1>Checked In!</h1>
+        <p class="attendee-name"><%= reg.full_name %></p>
+        <p class="event-name"><%= reg.event_name %></p>
+        <% if (reg.event_date) { %><p class="event-meta"><%= formatDate(reg.event_date) %></p><% } %>
+        <% if (reg.event_location) { %><p class="event-meta"><%= reg.event_location %></p><% } %>
+      </div>
+
+      <% } else if (status === 'already_checked_in') { %>
+      <div class="checkin-card checkin-warning">
+        <div class="checkin-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h1>Already Checked In</h1>
+        <p class="attendee-name"><%= reg.full_name %></p>
+        <p class="event-name"><%= reg.event_name %></p>
+        <% if (reg.checked_in_at) { %>
+        <p class="event-meta">Checked in at <%= new Date(reg.checked_in_at).toLocaleString() %></p>
+        <% } %>
+      </div>
+
+      <% } else { %>
+      <div class="checkin-card checkin-error">
+        <div class="checkin-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <h1>Invalid QR Code</h1>
+        <p>This QR code is not valid or has been revoked.</p>
+      </div>
+      <% } %>
+
+      <div class="checkin-actions">
+        <a href="/" class="btn btn-outline">Back to Home</a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

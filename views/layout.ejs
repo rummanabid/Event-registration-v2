@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= typeof title !== 'undefined' ? title + ' — ' : '' %>Events QR Check-in</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <% if (typeof hideNav === 'undefined' || !hideNav) { %>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="4" height="4"/>
+          <rect x="9" y="14" width="4" height="4"/>
+        </svg>
+        Events QR Check-in
+      </a>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="/admin">Admin</a>
+        <a href="/scan">Scanner</a>
+      </nav>
+    </div>
+  </header>
+  <% } %>
+
+  <main class="<%= typeof mainClass !== 'undefined' ? mainClass : '' %>">
+    <%- body %>
+  </main>
+
+  <% if (typeof hideNav === 'undefined' || !hideNav) { %>
+  <footer class="site-footer">
+    <p>Events QR Check-in &copy; <%= new Date().getFullYear() %></p>
+  </footer>
+  <% } %>
+</body>
+</html>

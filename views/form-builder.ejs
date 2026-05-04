@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Form Builder — <%= event.name %> — Events QR Check-in</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="4" height="4"/>
+          <rect x="9" y="14" width="4" height="4"/>
+        </svg>
+        Events QR Check-in
+      </a>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="/admin">Admin</a>
+        <a href="/scan">Scanner</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="admin-page">
+    <div class="container">
+      <div class="page-header">
+        <div>
+          <a href="/admin" class="back-link">&larr; Back to Admin</a>
+          <h1>Form Builder</h1>
+          <p class="text-muted"><strong><%= event.name %></strong> &mdash; Customize the registration form</p>
+        </div>
+        <div class="page-header-actions">
+          <a href="/embed?event=<%= event.slug %>" target="_blank" class="btn btn-outline">Preview Form</a>
+          <button class="btn btn-primary" onclick="saveForm()">Save Form</button>
+        </div>
+      </div>
+
+      <div class="form-builder-layout">
+        <!-- Standard Fields -->
+        <section class="card">
+          <div class="card-header">
+            <h2>Standard Fields</h2>
+          </div>
+          <div class="card-body">
+            <div class="standard-field locked">
+              <div class="field-label">
+                <strong>Full Name</strong>
+                <span class="badge badge-required">Required</span>
+              </div>
+              <div class="field-controls">
+                <span class="text-muted text-sm">Always shown, always required</span>
+              </div>
+            </div>
+            <div class="standard-field locked">
+              <div class="field-label">
+                <strong>Email Address</strong>
+                <span class="badge badge-required">Required</span>
+              </div>
+              <div class="field-controls">
+                <span class="text-muted text-sm">Always shown, always required</span>
+              </div>
+            </div>
+            <div class="standard-field" id="sf-phone">
+              <div class="field-label">
+                <strong>Phone Number</strong>
+              </div>
+              <div class="field-controls">
+                <label class="toggle-label">
+                  <input type="checkbox" id="phone-visible" <%= (fieldConfig.phone && fieldConfig.phone.is_visible) ? 'checked' : '' %> onchange="updateStandardField()" />
+                  Show field
+                </label>
+                <label class="toggle-label">
+                  <input type="checkbox" id="phone-required" <%= (fieldConfig.phone && fieldConfig.phone.is_required) ? 'checked' : '' %> onchange="updateStandardField()" />
+                  Required
+                </label>
+              </div>
+            </div>
+            <div class="standard-field" id="sf-company">
+              <div class="field-label">
+                <strong>Company / Organization</strong>
+              </div>
+              <div class="field-controls">
+                <label class="toggle-label">
+                  <input type="checkbox" id="company-visible" <%= (fieldConfig.company && fieldConfig.company.is_visible) ? 'checked' : '' %> onchange="updateStandardField()" />
+                  Show field
+                </label>
+                <label class="toggle-label">
+                  <input type="checkbox" id="company-required" <%= (fieldConfig.company && fieldConfig.company.is_required) ? 'checked' : '' %> onchange="updateStandardField()" />
+                  Required
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Custom Fields -->
+        <section class="card">
+          <div class="card-header">
+            <h2>Custom Fields</h2>
+          </div>
+          <div class="card-body">
+            <div class="add-field-buttons">
+              <span class="text-sm text-muted">Add field:</span>
+              <button class="btn btn-sm btn-outline" onclick="addField('short_text')">Short Text</button>
+              <button class="btn btn-sm btn-outline" onclick="addField('long_text')">Long Text</button>
+              <button class="btn btn-sm btn-outline" onclick="addField('dropdown')">Dropdown</button>
+              <button class="btn btn-sm btn-outline" onclick="addField('checkbox')">Checkbox</button>
+              <button class="btn btn-sm btn-outline" onclick="addField('number')">Number</button>
+              <button class="btn btn-sm btn-outline" onclick="addField('date')">Date</button>
+            </div>
+            <div id="custom-fields-list" class="custom-fields-list">
+              <!-- Rendered by JS -->
+            </div>
+            <div id="no-custom-fields" class="empty-state text-sm">
+              <p>No custom fields yet. Use the buttons above to add fields.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="form-builder-save">
+        <button class="btn btn-primary btn-lg" onclick="saveForm()">Save Form Configuration</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Events QR Check-in &copy; <%= new Date().getFullYear() %></p>
+  </footer>
+
+  <script>
+    const EVENT_ID = '<%= event.id %>';
+    const INITIAL_FIELDS = <%- JSON.stringify(formFields) %>;
+  </script>
+  <script src="/js/form-builder.js"></script>
+</body>
+</html>

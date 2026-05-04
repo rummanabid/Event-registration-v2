@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Scanner — Events QR Check-in</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="4" height="4"/>
+          <rect x="9" y="14" width="4" height="4"/>
+        </svg>
+        Events QR Check-in
+      </a>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="/admin">Admin</a>
+        <a href="/scan" class="active">Scanner</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="scan-page">
+    <div class="container">
+      <div class="scan-layout">
+        <!-- Left: Scanner -->
+        <div class="scan-col-main">
+          <section class="card">
+            <div class="card-header">
+              <h2>QR Scanner</h2>
+              <div class="card-header-actions">
+                <select id="scan-event-select" onchange="onEventChange(this.value)">
+                  <option value="">Select Event</option>
+                  <% events.forEach(e => { %>
+                  <option value="<%= e.id %>"><%= e.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
+            <div class="card-body">
+              <!-- Counter -->
+              <div class="checkin-counter" id="checkin-counter" style="display:none">
+                <div class="counter-inner">
+                  <span class="counter-label">Checked In</span>
+                  <span class="counter-value"><span id="cnt-in">0</span> / <span id="cnt-total">0</span></span>
+                </div>
+              </div>
+
+              <!-- Feedback banner -->
+              <div id="scan-feedback" class="scan-feedback hidden"></div>
+
+              <!-- Camera viewfinder -->
+              <div class="scanner-wrapper">
+                <div id="qr-reader"></div>
+                <div class="scanner-placeholder" id="scanner-placeholder">
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 7V1h-6M1 7V1h6M23 17v6h-6M1 17v6h6"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  <p>Select an event to start scanning</p>
+                </div>
+              </div>
+
+              <div class="scanner-buttons" id="scanner-buttons" style="display:none">
+                <button class="btn btn-primary" id="start-btn" onclick="startScanner()">Start Camera</button>
+                <button class="btn btn-outline hidden" id="stop-btn" onclick="stopScanner()">Stop Camera</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Session Log -->
+          <section class="card">
+            <div class="card-header">
+              <h2>Session Log</h2>
+              <button class="btn btn-sm btn-outline" onclick="clearLog()">Clear</button>
+            </div>
+            <div class="card-body">
+              <div id="session-log" class="session-log">
+                <div class="empty-state text-sm">
+                  <p>Scans will appear here.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Right: Manual Check-in -->
+        <div class="scan-col-side">
+          <section class="card">
+            <div class="card-header">
+              <h2>Manual Check-in</h2>
+            </div>
+            <div class="card-body">
+              <div id="manual-no-event" class="empty-state text-sm">
+                <p>Select an event above to use manual check-in.</p>
+              </div>
+              <div id="manual-checkin-area" style="display:none">
+                <div class="form-group">
+                  <input type="text" id="manual-search" placeholder="Search name, email, or phone..." oninput="debouncedSearch(this.value)" />
+                </div>
+                <div id="manual-results" class="manual-results"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Events QR Check-in &copy; <%= new Date().getFullYear() %></p>
+  </footer>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="/js/scanner.js"></script>
+</body>
+</html>

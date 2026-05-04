@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register — <%= event.name %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="<%= isEmbed ? 'embed-mode' : '' %>">
+  <% if (!isEmbed) { %>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="4" height="4"/>
+          <rect x="9" y="14" width="4" height="4"/>
+        </svg>
+        Events QR Check-in
+      </a>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="/admin">Admin</a>
+        <a href="/scan">Scanner</a>
+      </nav>
+    </div>
+  </header>
+  <% } %>
+
+  <main class="embed-main">
+    <div class="embed-container">
+      <div class="event-hero">
+        <h1 class="event-title"><%= event.name %></h1>
+        <% if (event.date || event.location) { %>
+        <div class="event-details">
+          <% if (event.date) { %>
+          <span class="event-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <%= formatDate(event.date) %>
+          </span>
+          <% } %>
+          <% if (event.location) { %>
+          <span class="event-detail">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <%= event.location %>
+          </span>
+          <% } %>
+        </div>
+        <% } %>
+      </div>
+
+      <form id="reg-form" class="reg-form" onsubmit="submitRegistration(event)">
+        <input type="hidden" name="event_id" value="<%= event.id %>" />
+
+        <div class="form-group">
+          <label for="full_name">Full Name <span class="required">*</span></label>
+          <input type="text" id="full_name" name="full_name" required autocomplete="name" />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address <span class="required">*</span></label>
+          <input type="email" id="email" name="email" required autocomplete="email" />
+        </div>
+
+        <% if (fieldConfig.phone && fieldConfig.phone.is_visible) { %>
+        <div class="form-group">
+          <label for="phone">Phone Number <% if (fieldConfig.phone.is_required) { %><span class="required">*</span><% } %></label>
+          <input type="tel" id="phone" name="phone" <%= fieldConfig.phone.is_required ? 'required' : '' %> autocomplete="tel" />
+        </div>
+        <% } %>
+
+        <% if (fieldConfig.company && fieldConfig.company.is_visible) { %>
+        <div class="form-group">
+          <label for="company">Company / Organization <% if (fieldConfig.company.is_required) { %><span class="required">*</span><% } %></label>
+          <input type="text" id="company" name="company" <%= fieldConfig.company.is_required ? 'required' : '' %> autocomplete="organization" />
+        </div>
+        <% } %>
+
+        <% formFields.forEach(field => { %>
+        <div class="form-group">
+          <label for="field-<%= field.id %>">
+            <%= field.label %>
+            <% if (field.is_required) { %><span class="required">*</span><% } %>
+          </label>
+          <% if (field.field_type === 'short_text') { %>
+            <input type="text" id="field-<%= field.id %>" name="custom_<%= field.id %>" <%= field.is_required ? 'required' : '' %> />
+          <% } else if (field.field_type === 'long_text') { %>
+            <textarea id="field-<%= field.id %>" name="custom_<%= field.id %>" rows="3" <%= field.is_required ? 'required' : '' %>></textarea>
+          <% } else if (field.field_type === 'number') { %>
+            <input type="number" id="field-<%= field.id %>" name="custom_<%= field.id %>" <%= field.is_required ? 'required' : '' %> />
+          <% } else if (field.field_type === 'date') { %>
+            <input type="date" id="field-<%= field.id %>" name="custom_<%= field.id %>" <%= field.is_required ? 'required' : '' %> />
+          <% } else if (field.field_type === 'checkbox') { %>
+            <label class="checkbox-label">
+              <input type="checkbox" id="field-<%= field.id %>" name="custom_<%= field.id %>" value="yes" <%= field.is_required ? 'required' : '' %> />
+              <span>Yes</span>
+            </label>
+          <% } else if (field.field_type === 'dropdown') { %>
+            <select id="field-<%= field.id %>" name="custom_<%= field.id %>" <%= field.is_required ? 'required' : '' %>>
+              <option value="">Select an option</option>
+              <% const opts = field.options ? JSON.parse(field.options) : []; %>
+              <% opts.forEach(opt => { %>
+              <option value="<%= opt %>"><%= opt %></option>
+              <% }) %>
+            </select>
+          <% } %>
+        </div>
+        <% }) %>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="submit-btn">
+          Register Now
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <% if (!isEmbed) { %>
+  <footer class="site-footer">
+    <p>Events QR Check-in &copy; <%= new Date().getFullYear() %></p>
+  </footer>
+  <% } %>
+
+  <script>
+    const EVENT_SLUG = '<%= event.slug %>';
+    const IS_EMBED = <%= isEmbed ? 'true' : 'false' %>;
+  </script>
+  <script src="/js/embed.js"></script>
+</body>
+</html>

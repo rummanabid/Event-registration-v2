@@ -1,0 +1,66 @@
+const Database = require('better-sqlite3');
+const path = require('path');
+
+const DB_PATH = path.join(__dirname, 'events.db');
+
+let db;
+
+function getDb() {
+  if (!db) {
+    db = new Database(DB_PATH);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
+    migrate();
+  }
+  return db;
+}
+
+function migrate() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS events (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      date TEXT,
+      location TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS form_fields (
+      id TEXT PRIMARY KEY,
+      event_id TEXT NOT NULL,
+      field_type TEXT NOT NULL,
+      label TEXT NOT NULL,
+      is_required INTEGER NOT NULL DEFAULT 0,
+      options TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS field_config (
+      id TEXT PRIMARY KEY,
+      event_id TEXT NOT NULL,
+      field_name TEXT NOT NULL,
+      is_visible INTEGER NOT NULL DEFAULT 1,
+      is_required INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS registrations (
+      id TEXT PRIMARY KEY,
+      event_id TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT,
+      company TEXT,
+      custom_data TEXT,
+      qr_token TEXT UNIQUE NOT NULL,
+      checked_in INTEGER NOT NULL DEFAULT 0,
+      checked_in_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    );
+  `);
+}
+
+module.exports = { getDb };
