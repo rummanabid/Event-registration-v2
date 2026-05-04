@@ -1,7 +1,9 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'events.db');
+// Use RAILWAY_VOLUME_MOUNT_PATH if available (persistent disk), otherwise local db/
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || __dirname;
+const DB_PATH = path.join(DATA_DIR, 'events.db');
 
 let db;
 
