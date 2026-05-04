@@ -3,7 +3,7 @@ async function submitRegistration(e) {
   const form = document.getElementById('reg-form');
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
-  btn.textContent = 'Registering...';
+  btn.textContent = 'Submitting...';
 
   const formData = new FormData(form);
   const body = {
@@ -17,8 +17,7 @@ async function submitRegistration(e) {
 
   for (const [key, val] of formData.entries()) {
     if (key.startsWith('custom_')) {
-      const fieldId = key.replace('custom_', '');
-      body.custom_data[fieldId] = val;
+      body.custom_data[key.replace('custom_', '')] = val;
     }
   }
 
@@ -28,6 +27,15 @@ async function submitRegistration(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
+
+    if (res.status === 409) {
+      // Already registered
+      document.getElementById('duplicate-notice').classList.remove('hidden');
+      document.getElementById('duplicate-notice').scrollIntoView({ behavior: 'smooth' });
+      btn.disabled = false;
+      btn.textContent = 'Register Now';
+      return;
+    }
 
     if (res.ok) {
       const data = await res.json();
@@ -39,7 +47,7 @@ async function submitRegistration(e) {
       btn.disabled = false;
       btn.textContent = 'Register Now';
     }
-  } catch (err) {
+  } catch {
     alert('Network error. Please try again.');
     btn.disabled = false;
     btn.textContent = 'Register Now';

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics — Events QR Check-in</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="4" height="4"/>
+          <rect x="9" y="14" width="4" height="4"/>
+        </svg>
+        Events QR Check-in
+      </a>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="/admin">Admin</a>
+        <a href="/analytics" class="active">Analytics</a>
+        <a href="/scan">Scanner</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="analytics-page">
+    <div class="container">
+      <div class="page-header">
+        <div>
+          <h1>Analytics</h1>
+          <p class="text-muted">Registration and attendance overview</p>
+        </div>
+        <a href="/admin" class="btn btn-outline">← Admin</a>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card kpi-loading">Loading...</div>
+        <div class="kpi-card kpi-loading">Loading...</div>
+        <div class="kpi-card kpi-loading">Loading...</div>
+        <div class="kpi-card kpi-loading">Loading...</div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+        <div class="card chart-card">
+          <div class="card-header"><h2>Registrations — Last 14 Days</h2></div>
+          <div class="card-body">
+            <canvas id="registrations-chart" height="120"></canvas>
+          </div>
+        </div>
+        <div class="card chart-card">
+          <div class="card-header"><h2>Overall Check-in Rate</h2></div>
+          <div class="card-body chart-body-center">
+            <canvas id="checkin-rate-chart" height="180"></canvas>
+            <div class="chart-center-label" id="checkin-rate-label"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-event table -->
+      <div class="card">
+        <div class="card-header"><h2>Event Breakdown</h2></div>
+        <div class="card-body">
+          <div id="event-table-container">
+            <div class="empty-state"><p>Loading...</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Events QR Check-in &copy; <%= new Date().getFullYear() %></p>
+  </footer>
+
+  <script src="/js/analytics.js"></script>
+</body>
+</html>

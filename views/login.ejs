@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login — Events QR Check-in</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="login-body">
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-logo">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="4" height="4"/>
+          <rect x="9" y="14" width="4" height="4"/>
+        </svg>
+      </div>
+      <h1>Events QR Check-in</h1>
+      <p class="login-subtitle">Enter your admin PIN to continue</p>
+
+      <% if (error) { %>
+      <div class="alert alert-error"><%= error %></div>
+      <% } %>
+
+      <form method="POST" action="/login" class="login-form">
+        <div class="form-group">
+          <label for="pin">Admin PIN</label>
+          <input type="password" id="pin" name="pin" placeholder="Enter PIN"
+            autocomplete="current-password" autofocus inputmode="numeric" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full btn-lg">Unlock</button>
+      </form>
+
+      <a href="/" class="login-back">← Back to home</a>
+    </div>
+  </div>
+</body>
+</html>

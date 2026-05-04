@@ -18,8 +18,9 @@
         Events QR Check-in
       </a>
       <nav class="site-nav">
-        <a href="/">Home</a>
+        <a href="/" class="active">Home</a>
         <a href="/admin">Admin</a>
+        <a href="/analytics">Analytics</a>
         <a href="/scan">Scanner</a>
       </nav>
     </div>
@@ -28,7 +29,7 @@
   <main>
     <section class="hero">
       <div class="hero-inner">
-        <div class="hero-badge">Event Management</div>
+        <div class="hero-badge">Event Management Platform</div>
         <h1 class="hero-title">Events QR Check-in</h1>
         <p class="hero-tagline">Manage events, register attendees, scan QR codes, and print badges — all in one place.</p>
         <div class="hero-actions">
@@ -44,6 +45,34 @@
       </div>
     </section>
 
+    <!-- Global Stats -->
+    <% if (totals.total_events > 0) { %>
+    <section class="home-stats-section">
+      <div class="container">
+        <div class="home-stats-grid">
+          <div class="home-stat">
+            <span class="home-stat-value"><%= totals.total_events %></span>
+            <span class="home-stat-label">Total Events</span>
+          </div>
+          <div class="home-stat">
+            <span class="home-stat-value"><%= totals.total_registrations %></span>
+            <span class="home-stat-label">Registrations</span>
+          </div>
+          <div class="home-stat">
+            <span class="home-stat-value"><%= totals.total_checked_in %></span>
+            <span class="home-stat-label">Checked In</span>
+          </div>
+          <div class="home-stat">
+            <span class="home-stat-value home-stat-pct">
+              <%= totals.total_registrations > 0 ? Math.round((totals.total_checked_in / totals.total_registrations) * 100) : 0 %>%
+            </span>
+            <span class="home-stat-label">Check-in Rate</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <% } %>
+
     <section class="action-cards-section">
       <div class="container">
         <div class="action-grid">
@@ -52,7 +81,7 @@
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
             </div>
             <h2>Admin Dashboard</h2>
-            <p>Create events, view registrations, manage form fields, export CSV and Excel reports.</p>
+            <p>Create events, manage form fields, view registrations, export CSV and Excel reports, print badges.</p>
             <span class="action-link">Go to Admin &rarr;</span>
           </a>
           <a href="/scan" class="action-card">
@@ -60,8 +89,16 @@
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7V1h-6M1 7V1h6M23 17v6h-6M1 17v6h6"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             </div>
             <h2>QR Scanner</h2>
-            <p>Scan attendee QR codes to check them in. Manual check-in search included for lost codes.</p>
+            <p>Scan attendee QR codes to check them in. Manual search included for lost codes.</p>
             <span class="action-link">Open Scanner &rarr;</span>
+          </a>
+          <a href="/analytics" class="action-card">
+            <div class="action-card-icon analytics-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </div>
+            <h2>Analytics</h2>
+            <p>Registration trends, check-in rates, per-event breakdowns and attendance charts.</p>
+            <span class="action-link">View Analytics &rarr;</span>
           </a>
         </div>
       </div>
@@ -92,6 +129,7 @@
             <div class="event-stats">
               <span class="stat"><strong><%= event.registration_count %></strong> registered</span>
               <span class="stat"><strong><%= event.checked_in_count %></strong> checked in</span>
+              <% if (event.capacity) { %><span class="stat text-muted">Cap: <%= event.capacity %></span><% } %>
             </div>
             <div class="event-card-actions">
               <a href="/embed?event=<%= event.slug %>" class="btn btn-sm btn-outline" target="_blank">Register</a>

@@ -25,6 +25,7 @@ function migrate() {
       slug TEXT UNIQUE NOT NULL,
       date TEXT,
       location TEXT,
+      capacity INTEGER,
       created_at TEXT NOT NULL
     );
 
@@ -59,10 +60,16 @@ function migrate() {
       qr_token TEXT UNIQUE NOT NULL,
       checked_in INTEGER NOT NULL DEFAULT 0,
       checked_in_at TEXT,
+      waitlisted INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
     );
   `);
+
+  // Safe column additions for existing databases
+  const safeAlter = (sql) => { try { db.exec(sql); } catch (e) {} };
+  safeAlter('ALTER TABLE events ADD COLUMN capacity INTEGER');
+  safeAlter('ALTER TABLE registrations ADD COLUMN waitlisted INTEGER NOT NULL DEFAULT 0');
 }
 
 module.exports = { getDb };

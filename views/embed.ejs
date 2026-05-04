@@ -19,9 +19,7 @@
         Events QR Check-in
       </a>
       <nav class="site-nav">
-        <a href="/">Home</a>
-        <a href="/admin">Admin</a>
-        <a href="/scan">Scanner</a>
+        <a href="/">Home</a><a href="/admin">Admin</a><a href="/scan">Scanner</a>
       </nav>
     </div>
   </header>
@@ -47,6 +45,25 @@
           <% } %>
         </div>
         <% } %>
+
+        <% if (event.capacity) { %>
+        <div class="capacity-bar-wrap">
+          <% const pct = Math.min(100, Math.round(((event.capacity - (spotsRemaining || 0)) / event.capacity) * 100)); %>
+          <div class="capacity-bar">
+            <div class="capacity-bar-fill" style="width:<%= pct %>%"></div>
+          </div>
+          <% if (isSoldOut) { %>
+          <span class="capacity-label sold-out">Event full — joining waitlist</span>
+          <% } else { %>
+          <span class="capacity-label"><%= spotsRemaining %> spot<%= spotsRemaining !== 1 ? 's' : '' %> remaining</span>
+          <% } %>
+        </div>
+        <% } %>
+      </div>
+
+      <div id="duplicate-notice" class="alert alert-warning hidden">
+        You're already registered for this event!
+        <button class="btn btn-sm btn-outline" style="margin-left:8px" onclick="document.getElementById('duplicate-notice').classList.add('hidden')">Dismiss</button>
       </div>
 
       <form id="reg-form" class="reg-form" onsubmit="submitRegistration(event)">
@@ -56,7 +73,6 @@
           <label for="full_name">Full Name <span class="required">*</span></label>
           <input type="text" id="full_name" name="full_name" required autocomplete="name" />
         </div>
-
         <div class="form-group">
           <label for="email">Email Address <span class="required">*</span></label>
           <input type="email" id="email" name="email" required autocomplete="email" />
@@ -78,10 +94,7 @@
 
         <% formFields.forEach(field => { %>
         <div class="form-group">
-          <label for="field-<%= field.id %>">
-            <%= field.label %>
-            <% if (field.is_required) { %><span class="required">*</span><% } %>
-          </label>
+          <label for="field-<%= field.id %>"><%= field.label %><% if (field.is_required) { %> <span class="required">*</span><% } %></label>
           <% if (field.field_type === 'short_text') { %>
             <input type="text" id="field-<%= field.id %>" name="custom_<%= field.id %>" <%= field.is_required ? 'required' : '' %> />
           <% } else if (field.field_type === 'long_text') { %>
@@ -99,16 +112,20 @@
             <select id="field-<%= field.id %>" name="custom_<%= field.id %>" <%= field.is_required ? 'required' : '' %>>
               <option value="">Select an option</option>
               <% const opts = field.options ? JSON.parse(field.options) : []; %>
-              <% opts.forEach(opt => { %>
-              <option value="<%= opt %>"><%= opt %></option>
-              <% }) %>
+              <% opts.forEach(opt => { %><option value="<%= opt %>"><%= opt %></option><% }) %>
             </select>
           <% } %>
         </div>
         <% }) %>
 
+        <% if (isSoldOut) { %>
+        <div class="alert alert-warning" style="margin-bottom:12px">
+          This event is at capacity. You'll be added to the waitlist.
+        </div>
+        <% } %>
+
         <button type="submit" class="btn btn-primary btn-full btn-lg" id="submit-btn">
-          Register Now
+          <%= isSoldOut ? 'Join Waitlist' : 'Register Now' %>
         </button>
       </form>
     </div>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Registration Successful — Events QR Check-in</title>
+  <title><%= reg.waitlisted ? 'Waitlist Confirmed' : 'Registration Successful' %> — Events QR Check-in</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body class="<%= isEmbed ? 'embed-mode' : '' %>">
@@ -24,6 +24,26 @@
 
   <main class="success-main">
     <div class="success-container">
+
+      <% if (reg.waitlisted) { %>
+      <!-- WAITLIST STATE -->
+      <div class="success-header waitlist-header">
+        <div class="success-icon waitlist-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h1>You're on the Waitlist</h1>
+        <p>Hi <strong><%= reg.full_name %></strong> — you've been added to the waitlist for <strong><%= reg.event_name %></strong>.</p>
+        <p class="text-muted" style="font-size:.9rem;margin-top:8px">We'll contact you at <strong><%= reg.email %></strong> if a spot opens up.</p>
+      </div>
+
+      <div class="event-info card">
+        <h3><%= reg.event_name %></h3>
+        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %></p><% } %>
+        <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %></p><% } %>
+      </div>
+
+      <% } else { %>
+      <!-- SUCCESS STATE -->
       <div class="success-header">
         <div class="success-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -38,7 +58,7 @@
       </div>
 
       <div class="qr-section">
-        <img src="<%= qrDataUrl %>" alt="Your QR Code" class="qr-image" id="qr-img" />
+        <img src="<%= qrDataUrl %>" alt="Your QR Code" class="qr-image" />
       </div>
 
       <div class="download-section">
@@ -65,26 +85,20 @@
 
       <div class="event-info card">
         <h3><%= reg.event_name %></h3>
-        <% if (reg.event_date) { %>
-        <p><strong>Date:</strong> <%= formatDate(reg.event_date) %></p>
-        <% } %>
-        <% if (reg.event_location) { %>
-        <p><strong>Location:</strong> <%= reg.event_location %></p>
-        <% } %>
+        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %></p><% } %>
+        <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %></p><% } %>
         <div class="calendar-links">
           <% if (reg.event_date) { %>
           <% const gcalDate = new Date(reg.event_date); %>
-          <% const gcalStart = gcalDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; %>
-          <% const gcalEnd = new Date(gcalDate.getTime() + 2*60*60*1000).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; %>
-          <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=<%= encodeURIComponent(reg.event_name) %>&dates=<%= gcalStart %>/<%= gcalEnd %><%= reg.event_location ? '&location=' + encodeURIComponent(reg.event_location) : '' %>" target="_blank" class="btn btn-sm btn-outline">
-            Add to Google Calendar
-          </a>
+          <% const gcalStart = gcalDate.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z'; %>
+          <% const gcalEnd = new Date(gcalDate.getTime()+2*3600000).toISOString().replace(/[-:]/g,'').split('.')[0]+'Z'; %>
+          <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=<%= encodeURIComponent(reg.event_name) %>&dates=<%= gcalStart %>/<%= gcalEnd %><%= reg.event_location ? '&location='+encodeURIComponent(reg.event_location) : '' %>" target="_blank" class="btn btn-sm btn-outline">Add to Google Calendar</a>
           <% } %>
-          <a href="/calendar/<%= reg.event_id %>.ics" class="btn btn-sm btn-outline">
-            Save to Apple / Outlook Calendar
-          </a>
+          <a href="/calendar/<%= reg.event_id %>.ics" class="btn btn-sm btn-outline">Save to Apple / Outlook Calendar</a>
         </div>
       </div>
+      <% } %>
+
     </div>
   </main>
 
@@ -94,45 +108,35 @@
   </footer>
   <% } %>
 
+  <% if (!reg.waitlisted) { %>
   <script>
     const REG_ID = '<%= reg.id %>';
     async function sendEmailQR() {
       const email = document.getElementById('email-to').value;
       if (!email) return;
       const btn = document.querySelector('#email-form-area button');
-      btn.disabled = true;
-      btn.textContent = 'Sending...';
+      btn.disabled = true; btn.textContent = 'Sending...';
       try {
-        const res = await fetch('/api/email-qr', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ registrationId: REG_ID, email })
-        });
+        const res = await fetch('/api/email-qr', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ registrationId: REG_ID, email }) });
         const data = await res.json();
         const status = document.getElementById('email-status');
-        status.className = '';
         if (res.ok) {
-          status.className = 'alert alert-success';
-          status.textContent = 'QR code sent! Check your inbox.';
+          status.className = 'alert alert-success'; status.textContent = 'QR code sent! Check your inbox.';
           document.getElementById('email-form-area').style.display = 'none';
         } else if (data.error === 'EMAIL_NOT_CONFIGURED') {
-          status.className = 'alert alert-warning';
-          status.textContent = 'Email is not configured on this server — please download your QR code instead.';
-          btn.disabled = false;
-          btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Send QR Code by Email';
+          status.className = 'alert alert-warning'; status.textContent = 'Email is not configured — please download your QR code instead.';
+          btn.disabled = false; btn.textContent = 'Send QR Code by Email';
         } else {
-          status.className = 'alert alert-error';
-          status.textContent = 'Failed to send email. Please download your QR code instead.';
-          btn.disabled = false;
-          btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Send QR Code by Email';
+          status.className = 'alert alert-error'; status.textContent = 'Failed to send. Please download your QR code instead.';
+          btn.disabled = false; btn.textContent = 'Send QR Code by Email';
         }
-      } catch (e) {
-        const status = document.getElementById('email-status');
-        status.className = 'alert alert-error';
-        status.textContent = 'Network error. Please download your QR code instead.';
+      } catch(e) {
+        document.getElementById('email-status').className = 'alert alert-error';
+        document.getElementById('email-status').textContent = 'Network error.';
         btn.disabled = false;
       }
     }
   </script>
+  <% } %>
 </body>
 </html>

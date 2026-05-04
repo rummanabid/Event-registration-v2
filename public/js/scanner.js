@@ -2,10 +2,12 @@ let html5QrCode = null;
 let currentEventId = null;
 let sessionLog = [];
 let debounceTimer = null;
+let counterInterval = null;
 
 function onEventChange(eventId) {
   currentEventId = eventId;
   stopScanner();
+  clearInterval(counterInterval);
 
   if (eventId) {
     document.getElementById('scanner-placeholder').style.display = 'none';
@@ -14,6 +16,7 @@ function onEventChange(eventId) {
     document.getElementById('manual-checkin-area').style.display = 'block';
     document.getElementById('checkin-counter').style.display = 'block';
     updateCounter();
+    counterInterval = setInterval(updateCounter, 5000);
   } else {
     document.getElementById('scanner-placeholder').style.display = 'flex';
     document.getElementById('scanner-buttons').style.display = 'none';
@@ -25,20 +28,17 @@ function onEventChange(eventId) {
 
 async function startScanner() {
   if (!currentEventId) return;
-
   document.getElementById('start-btn').classList.add('hidden');
   document.getElementById('stop-btn').classList.remove('hidden');
 
   html5QrCode = new Html5Qrcode('qr-reader');
-
   try {
     await html5QrCode.start(
       { facingMode: 'environment' },
       { fps: 10, qrbox: { width: 280, height: 280 } },
-      onQRScan,
-      () => {}
+      onQRScan, () => {}
     );
-  } catch (err) {
+  } catch {
     showFeedback('error', 'Camera access denied or unavailable.');
     document.getElementById('start-btn').classList.remove('hidden');
     document.getElementById('stop-btn').classList.add('hidden');
@@ -47,7 +47,7 @@ async function startScanner() {
 
 async function stopScanner() {
   if (html5QrCode) {
-    try { await html5QrCode.stop(); } catch (e) {}
+    try { await html5QrCode.stop(); } catch {}
     html5QrCode = null;
   }
   document.getElementById('start-btn').classList.remove('hidden');
@@ -55,7 +55,6 @@ async function stopScanner() {
 }
 
 async function onQRScan(decodedText) {
-  // Extract token from URL if full URL was scanned
   let token = decodedText;
   const match = decodedText.match(/\/checkin\/([^/?#]+)/);
   if (match) token = match[1];
@@ -63,11 +62,7 @@ async function onQRScan(decodedText) {
   await stopScanner();
 
   try {
-    const res = await fetch('/api/checkin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
-    });
+    const res = await fetch('/api/checkin', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ token }) });
     const data = await res.json();
 
     if (data.status === 'success') {
@@ -82,9 +77,8 @@ async function onQRScan(decodedText) {
     }
 
     updateCounter();
-    // Auto-resume after 2.5s
     setTimeout(() => startScanner(), 2500);
-  } catch (err) {
+  } catch {
     showFeedback('error', '✗ Network error during check-in');
     setTimeout(() => startScanner(), 2500);
   }
@@ -121,10 +115,7 @@ function renderLog() {
   `).join('');
 }
 
-function clearLog() {
-  sessionLog = [];
-  renderLog();
-}
+function clearLog() { sessionLog = []; renderLog(); }
 
 async function updateCounter() {
   if (!currentEventId) return;
@@ -133,7 +124,7 @@ async function updateCounter() {
     const data = await res.json();
     document.getElementById('cnt-in').textContent = data.checkedIn;
     document.getElementById('cnt-total').textContent = data.total;
-  } catch (e) {}
+  } catch {}
 }
 
 // Manual check-in
@@ -145,18 +136,13 @@ function debouncedSearch(q) {
 async function searchRegistrations(q) {
   if (!currentEventId) return;
   const container = document.getElementById('manual-results');
-
-  if (!q.trim()) {
-    container.innerHTML = '';
-    return;
-  }
+  if (!q.trim()) { container.innerHTML = ''; return; }
 
   try {
     const res = await fetch(`/api/events/${currentEventId}/search-registrations?q=${encodeURIComponent(q)}`);
-    const regs = await res.json();
-    renderManualResults(regs);
-  } catch (e) {
-    container.innerHTML = '<p class="text-sm text-muted">Error searching registrations.</p>';
+    renderManualResults(await res.json());
+  } catch {
+    container.innerHTML = '<p class="text-sm text-muted">Error searching.</p>';
   }
 }
 
@@ -166,18 +152,13 @@ function renderManualResults(regs) {
     container.innerHTML = '<p class="text-sm text-muted" style="text-align:center;padding:16px">No results found.</p>';
     return;
   }
-
   container.innerHTML = regs.map(r => `
     <div class="manual-reg-card ${r.checked_in ? 'checked-in' : ''}" id="manual-card-${r.id}">
-      <div class="manual-reg-name">${escHtml(r.full_name)}</div>
-      <div class="manual-reg-meta">
-        ${escHtml(r.email)}
-        ${r.company ? ' · ' + escHtml(r.company) : ''}
-        ${r.phone ? ' · ' + escHtml(r.phone) : ''}
-      </div>
+      <div class="manual-reg-name">${escHtml(r.full_name)}${r.waitlisted ? ' <span style="font-size:.72rem;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-weight:700">Waitlist</span>' : ''}</div>
+      <div class="manual-reg-meta">${escHtml(r.email)}${r.company ? ' · ' + escHtml(r.company) : ''}${r.phone ? ' · ' + escHtml(r.phone) : ''}</div>
       ${r.checked_in
         ? `<div class="manual-checked-in-label">✓ Checked in at ${new Date(r.checked_in_at).toLocaleTimeString()}</div>`
-        : `<button class="btn btn-sm btn-success" onclick="manualCheckin('${r.id}', '${escHtml(r.full_name).replace(/'/g, "\\'")}')">✓ Confirm Attendance</button>`
+        : `<button class="btn btn-sm btn-success" onclick="manualCheckin('${r.id}', '${escHtml(r.full_name).replace(/'/g,"\\'")}')">✓ Confirm Attendance</button>`
       }
     </div>
   `).join('');
@@ -195,7 +176,6 @@ async function manualCheckin(regId, name) {
       showFeedback('success', `✓ Manually checked in: ${data.attendeeName}`);
       addLog('success', data.attendeeName, 'Manual');
       updateCounter();
-
       const card = document.getElementById(`manual-card-${regId}`);
       if (card) {
         card.classList.add('checked-in');
@@ -208,12 +188,12 @@ async function manualCheckin(regId, name) {
     } else if (data.status === 'already_checked_in') {
       showFeedback('already', `⚡ Already checked in: ${data.attendeeName}`);
     }
-  } catch (err) {
+  } catch {
     showFeedback('error', '✗ Network error');
     if (btn) { btn.disabled = false; btn.textContent = '✓ Confirm Attendance'; }
   }
 }
 
 function escHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

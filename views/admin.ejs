@@ -20,7 +20,9 @@
       <nav class="site-nav">
         <a href="/">Home</a>
         <a href="/admin" class="active">Admin</a>
+        <a href="/analytics">Analytics</a>
         <a href="/scan">Scanner</a>
+        <% if (process.env.ADMIN_PIN) { %><a href="/logout">Logout</a><% } %>
       </nav>
     </div>
   </header>
@@ -28,15 +30,19 @@
   <main class="admin-page">
     <div class="container">
       <div class="page-header">
-        <h1>Admin Dashboard</h1>
-        <p class="text-muted">Create and manage events, view registrations, export data.</p>
+        <div>
+          <h1>Admin Dashboard</h1>
+          <p class="text-muted">Create and manage events, view registrations, export data.</p>
+        </div>
+        <a href="/analytics" class="btn btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          View Analytics
+        </a>
       </div>
 
       <!-- Create Event -->
       <section class="card" id="create-event">
-        <div class="card-header">
-          <h2>Create New Event</h2>
-        </div>
+        <div class="card-header"><h2>Create New Event</h2></div>
         <div class="card-body">
           <form id="create-event-form" class="form-row">
             <div class="form-group flex-2">
@@ -50,6 +56,10 @@
             <div class="form-group flex-2">
               <label for="new-location">Location</label>
               <input type="text" id="new-location" name="location" placeholder="e.g. Convention Center, NYC" />
+            </div>
+            <div class="form-group">
+              <label for="new-capacity">Capacity</label>
+              <input type="number" id="new-capacity" name="capacity" placeholder="Unlimited" min="1" />
             </div>
             <div class="form-group form-group-submit">
               <button type="submit" class="btn btn-primary">Create Event</button>
@@ -80,6 +90,7 @@
                   <% if (event.date) { %><span><%= formatDate(event.date) %></span><% } %>
                   <% if (event.location) { %><span><%= event.location %></span><% } %>
                   <span class="text-muted">/<%= event.slug %></span>
+                  <% if (event.capacity) { %><span class="text-muted">Cap: <%= event.capacity %></span><% } %>
                 </div>
               </div>
               <div class="event-stats-inline">
@@ -91,17 +102,26 @@
                   <strong><%= event.checked_in_count %></strong>
                   <span>checked in</span>
                 </div>
+                <% if (event.waitlist_count > 0) { %>
+                <div class="stat-box stat-box-yellow">
+                  <strong><%= event.waitlist_count %></strong>
+                  <span>waitlist</span>
+                </div>
+                <% } %>
               </div>
             </div>
             <div class="event-admin-actions">
-              <button class="btn btn-sm btn-outline btn-edit" onclick="startEditEvent('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>', '<%= event.date || "" %>', '<%= (event.location || "").replace(/'/g, "\\'") %>')">Edit</button>
+              <button class="btn btn-sm btn-outline" onclick="startEditEvent('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>', '<%= event.date || "" %>', '<%= (event.location || "").replace(/'/g, "\\'") %>', '<%= event.capacity || "" %>')">Edit</button>
               <a href="/form-builder/<%= event.id %>" class="btn btn-sm btn-outline">Form Builder</a>
               <button class="btn btn-sm btn-outline" onclick="showEmbed('<%= event.id %>', '<%= event.slug %>')">Embed Form</button>
-              <a href="/embed?event=<%= event.slug %>" class="btn btn-sm btn-outline" target="_blank">Registration Form</a>
-              <button class="btn btn-sm btn-outline btn-view-regs" onclick="loadRegistrations('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>')">View Registrations</button>
+              <a href="/embed?event=<%= event.slug %>" class="btn btn-sm btn-outline" target="_blank">Reg Form</a>
+              <a href="/badges/<%= event.id %>" class="btn btn-sm btn-outline" target="_blank">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print Badges
+              </a>
+              <button class="btn btn-sm btn-outline" onclick="loadRegistrations('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>')">Registrations</button>
               <button class="btn btn-sm btn-danger" onclick="deleteEvent('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>')">Delete</button>
             </div>
-            <!-- Edit form (hidden) -->
             <div class="edit-form hidden" id="edit-form-<%= event.id %>">
               <div class="form-row">
                 <div class="form-group flex-2">
@@ -115,6 +135,10 @@
                 <div class="form-group flex-2">
                   <label>Location</label>
                   <input type="text" id="edit-location-<%= event.id %>" value="<%= event.location || '' %>" />
+                </div>
+                <div class="form-group">
+                  <label>Capacity</label>
+                  <input type="number" id="edit-capacity-<%= event.id %>" value="<%= event.capacity || '' %>" placeholder="Unlimited" min="1" />
                 </div>
                 <div class="form-group form-group-submit">
                   <button class="btn btn-primary btn-sm" onclick="saveEvent('<%= event.id %>')">Save</button>
@@ -168,7 +192,7 @@
         <button onclick="closeModal('embed-modal')" class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="text-muted">Copy and paste this code into your website to embed the registration form:</p>
+        <p class="text-muted">Copy and paste this code into your website:</p>
         <div class="code-block">
           <textarea id="embed-code" readonly rows="4"></textarea>
           <button class="btn btn-primary btn-sm" onclick="copyEmbed()">Copy Code</button>
