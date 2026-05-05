@@ -62,7 +62,7 @@
       </div>
 
       <div class="download-section">
-        <button onclick="downloadBadgeCard()" class="btn btn-download btn-full">
+        <button onclick="downloadBadgeCard(this)" class="btn btn-download btn-full">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           DOWNLOAD YOUR BADGE CARD
         </button>
@@ -73,12 +73,14 @@
         <h3>Share Your QR Code</h3>
         <div class="share-buttons">
           <%
+            const qrDirectUrl = baseUrl + '/api/qr/' + reg.qr_token + '.png';
             const mailSubject = encodeURIComponent('Your registration for ' + reg.event_name);
             const mailBody = encodeURIComponent(
               'Hi ' + reg.full_name + ',\n\nYou are registered for ' + reg.event_name + '.\n\n' +
               (reg.event_date ? 'Date: ' + formatDate(reg.event_date) + '\n' : '') +
               (reg.event_location ? 'Location: ' + reg.event_location + '\n' : '') +
-              '\nSave your QR code — you will need it to check in at the event.'
+              '\nYour QR code (open to view or screenshot):\n' + qrDirectUrl +
+              '\n\nYou will need this QR code to check in at the event.'
             );
           %>
           <a href="mailto:<%= reg.email %>?subject=<%= mailSubject %>&body=<%= mailBody %>" class="btn btn-outline btn-share">
@@ -92,7 +94,7 @@
               'Hi ' + reg.full_name + '! You are registered for ' + reg.event_name + '. ' +
               (reg.event_date ? 'Date: ' + formatDate(reg.event_date) + '. ' : '') +
               (reg.event_location ? 'Location: ' + reg.event_location + '. ' : '') +
-              'Save your QR code to check in at the event.'
+              'Open this link to get your QR code for check-in: ' + qrDirectUrl
             );
           %>
           <a href="https://wa.me/<%= waPhone %>?text=<%= waText %>" target="_blank" class="btn btn-outline btn-share btn-whatsapp">
@@ -134,155 +136,175 @@
     const ATTENDEE_COMPANY = `<%- (reg.company || '').replace(/`/g, '\\`') %>`;
     const EVENT_NAME       = `<%- reg.event_name.replace(/`/g, '\\`') %>`;
     const EVENT_SLUG       = '<%= reg.event_slug %>';
+    const QR_TOKEN         = '<%= reg.qr_token %>';
 
-    // Brand colour matching Al Jammaz Technologies identity
-    const BRAND_GREEN  = '#1a5c2a';
-    const BRAND_LIGHT  = '#e8f5e9';
+    const GREEN      = '#1a5c2a';
+    const GREEN_DARK = '#14471f';
+    const GREEN_LITE = '#e8f5e9';
+    const GREEN_MID  = '#bbf7d0';
 
-    function downloadBadgeCard() {
-      // Use the already-loaded QR image on the page — avoids re-fetching the data URL
-      const qrImg = document.querySelector('.qr-image');
-      if (!qrImg) return;
+    async function downloadBadgeCard(btn) {
+      btn.disabled = true;
+      const origHtml = btn.innerHTML;
+      btn.textContent = 'Generating…';
 
-      const canvas = document.getElementById('badge-canvas');
-      const W = 720, H = 430;
-      canvas.width = W; canvas.height = H;
-      const ctx = canvas.getContext('2d');
+      try {
+        // Load QR from the dedicated PNG endpoint — same origin, no taint issues
+        const qrBitmap = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => createImageBitmap(img).then(resolve).catch(reject);
+          img.onerror = reject;
+          img.src = `/api/qr/${QR_TOKEN}.png`;
+        });
 
-      function render() {
-        ctx.clearRect(0, 0, W, H);
+        const canvas = document.getElementById('badge-canvas');
+        const W = 740, H = 440;
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext('2d');
 
-        // ── White body background ──
+        // ── Overall white background ──
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, W, H);
 
-        // ── Green header bar ──
-        const HDR = 90;
-        ctx.fillStyle = BRAND_GREEN;
-        ctx.fillRect(0, 0, W, HDR);
+        // ── Left sidebar (green column) ──
+        const SB = 185;
+        ctx.fillStyle = GREEN;
+        ctx.fillRect(0, 0, SB, H);
 
-        // ── Sunburst logo in header ──
-        const LOGO_SIZE = 68;
-        const lx = 14, ly = 11;
-        drawSunburst(ctx, lx, ly, LOGO_SIZE, '#ffffff');
+        // Subtle bottom accent on sidebar
+        ctx.fillStyle = GREEN_DARK;
+        ctx.fillRect(0, H - 8, SB, 8);
 
-        // ── Company name in header ──
+        // Sunburst logo centred in sidebar
+        const logoSize = 110;
+        const logoX = (SB - logoSize) / 2;
+        const logoY = 28;
+        drawSunburst(ctx, logoX, logoY, logoSize, 'rgba(255,255,255,0.92)');
+
+        // Company name below logo
+        ctx.textAlign = 'center';
         ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'left';
         ctx.font = 'bold 13px system-ui, sans-serif';
-        ctx.fillText('al jammaz technologies', lx + LOGO_SIZE + 14, HDR / 2 + 6);
-        ctx.font = '11px system-ui, sans-serif';
-        ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        ctx.fillText('الجماز للتكنولوجيا', lx + LOGO_SIZE + 14, HDR / 2 - 10);
+        ctx.fillText('al jammaz', SB / 2, logoY + logoSize + 22);
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.font = '12px system-ui, sans-serif';
+        ctx.fillText('technologies', SB / 2, logoY + logoSize + 38);
 
-        // ── QR code — right side ──
-        const QR_SIZE  = 210;
-        const QR_X     = W - QR_SIZE - 28;
-        const QR_Y     = HDR + (H - HDR - QR_SIZE) / 2;
+        // ── Right content area ──
+        const RX = SB + 26;
+        const QR_SIZE = 195;
+        const QR_X = W - QR_SIZE - 22;
+        const maxW = QR_X - RX - 16;
 
-        // Light green QR background
-        ctx.fillStyle = BRAND_LIGHT;
-        roundRect(ctx, QR_X - 10, QR_Y - 10, QR_SIZE + 20, QR_SIZE + 20, 14);
-        ctx.fill();
-        ctx.drawImage(qrImg, QR_X, QR_Y, QR_SIZE, QR_SIZE);
+        // Top thin green accent line
+        ctx.fillStyle = GREEN_MID;
+        ctx.fillRect(SB, 0, W - SB, 5);
 
-        // ── Left side text ──
-        const TX = 32;
-        let TY = HDR + 34;
+        let TY = 36;
 
-        // Event label
-        ctx.fillStyle = BRAND_GREEN;
-        ctx.font = 'bold 11px system-ui, sans-serif';
+        // EVENT label + name
+        ctx.fillStyle = GREEN;
+        ctx.font = 'bold 9px system-ui, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('EVENT', TX, TY);
-        TY += 18;
-
-        // Event name
+        ctx.fillText('EVENT', RX, TY);
+        TY += 16;
         ctx.fillStyle = '#374151';
-        ctx.font = '15px system-ui, sans-serif';
-        const maxW = QR_X - TX - 16;
-        TY = wrapText(ctx, EVENT_NAME, TX, TY, maxW, 20) + 24;
+        ctx.font = '14px system-ui, sans-serif';
+        TY = wrapText(ctx, EVENT_NAME, RX, TY, maxW, 18) + 20;
 
         // Divider
         ctx.strokeStyle = '#e5e7eb';
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(TX, TY - 10); ctx.lineTo(QR_X - 16, TY - 10); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(RX, TY - 8); ctx.lineTo(QR_X - 12, TY - 8); ctx.stroke();
 
-        // Attendee label
-        ctx.fillStyle = BRAND_GREEN;
-        ctx.font = 'bold 11px system-ui, sans-serif';
-        ctx.fillText('ATTENDEE', TX, TY + 4);
-        TY += 22;
-
-        // Name
+        // ATTENDEE label + name
+        ctx.fillStyle = GREEN;
+        ctx.font = 'bold 9px system-ui, sans-serif';
+        ctx.fillText('ATTENDEE', RX, TY + 4);
+        TY += 20;
         ctx.fillStyle = '#111827';
-        ctx.font = `bold 28px system-ui, sans-serif`;
-        TY = wrapText(ctx, ATTENDEE_NAME, TX, TY, maxW, 34) + 14;
+        ctx.font = 'bold 30px system-ui, sans-serif';
+        TY = wrapText(ctx, ATTENDEE_NAME, RX, TY, maxW, 36) + 14;
 
         // Company
         if (ATTENDEE_COMPANY) {
           ctx.fillStyle = '#6b7280';
-          ctx.font = '16px system-ui, sans-serif';
-          wrapText(ctx, ATTENDEE_COMPANY, TX, TY, maxW, 22);
+          ctx.font = '15px system-ui, sans-serif';
+          wrapText(ctx, ATTENDEE_COMPANY, RX, TY, maxW, 20);
         }
 
-        // ── Footer strip ──
-        ctx.fillStyle = BRAND_LIGHT;
-        ctx.fillRect(0, H - 36, W, 36);
-        ctx.fillStyle = BRAND_GREEN;
-        ctx.font = '12px system-ui, sans-serif';
+        // ── QR code — right, vertically centred ──
+        const QR_Y = (H - QR_SIZE) / 2;
+        // Shadow effect
+        ctx.shadowColor = 'rgba(0,0,0,0.08)';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = GREEN_LITE;
+        roundRect(ctx, QR_X - 10, QR_Y - 10, QR_SIZE + 20, QR_SIZE + 20, 14);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.drawImage(qrBitmap, QR_X, QR_Y, QR_SIZE, QR_SIZE);
+
+        // "SCAN" label under QR
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '10px system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Show this QR code at the event check-in desk', W / 2, H - 14);
+        ctx.fillText('SCAN TO CHECK IN', QR_X + QR_SIZE / 2, QR_Y + QR_SIZE + 16);
 
-        // ── Bottom border accent ──
-        ctx.fillStyle = BRAND_GREEN;
-        ctx.fillRect(0, H - 4, W, 4);
+        // ── Footer strip ──
+        ctx.fillStyle = GREEN_LITE;
+        ctx.fillRect(SB, H - 38, W - SB, 38);
+        ctx.strokeStyle = GREEN_MID;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(SB, H - 38); ctx.lineTo(W, H - 38); ctx.stroke();
+        ctx.fillStyle = GREEN;
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Present this QR code at the event check-in desk', (W + SB) / 2, H - 14);
 
-        // Download
+        // Right border accent
+        ctx.fillStyle = GREEN;
+        ctx.fillRect(W - 5, 0, 5, H);
+
+        // ── Download ──
         const link = document.createElement('a');
         link.download = `${EVENT_SLUG}-badge.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-      }
-
-      if (qrImg.complete && qrImg.naturalWidth) {
-        render();
-      } else {
-        qrImg.onload = render;
+      } catch (err) {
+        console.error('Badge generation failed:', err);
+        alert('Could not generate badge. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
       }
     }
 
+    // Draw Al Jammaz sunburst logo — fan of lines from bottom-left corner, clipped to square
     function drawSunburst(ctx, x, y, size, color) {
       ctx.save();
-      ctx.beginPath();
-      ctx.rect(x, y, size, size);
-      ctx.clip();
-
+      ctx.beginPath(); ctx.rect(x, y, size, size); ctx.clip();
       const ox = x + 1, oy = y + size - 1;
-      const NUM = 14;
+      const N = 14;
       ctx.strokeStyle = color;
-      ctx.lineWidth = size / 28;
+      ctx.lineWidth = Math.max(2, size / 26);
       ctx.lineCap = 'butt';
-
-      for (let i = 0; i <= NUM; i++) {
-        const angle = (i / NUM) * Math.PI / 2;
-        const len = size * 2.5;
+      for (let i = 0; i <= N; i++) {
+        const a = (i / N) * Math.PI / 2;
+        const len = size * 2.4;
         ctx.beginPath();
         ctx.moveTo(ox, oy);
-        ctx.lineTo(ox + Math.cos(angle) * len, oy - Math.sin(angle) * len);
+        ctx.lineTo(ox + Math.cos(a) * len, oy - Math.sin(a) * len);
         ctx.stroke();
       }
       ctx.restore();
-
       ctx.strokeStyle = color;
-      ctx.lineWidth = size / 28;
+      ctx.lineWidth = Math.max(2, size / 26);
       ctx.strokeRect(x, y, size, size);
     }
 
     function roundRect(ctx, x, y, w, h, r) {
       ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
+      ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
       ctx.quadraticCurveTo(x + w, y, x + w, y + r);
       ctx.lineTo(x + w, y + h - r);
       ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
@@ -300,8 +322,7 @@
         const test = line + words[i] + ' ';
         if (ctx.measureText(test).width > maxWidth && i > 0) {
           ctx.fillText(line.trim(), x, y);
-          line = words[i] + ' ';
-          y += lineHeight;
+          line = words[i] + ' '; y += lineHeight;
         } else { line = test; }
       }
       ctx.fillText(line.trim(), x, y);
