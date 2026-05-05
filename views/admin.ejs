@@ -57,6 +57,10 @@
               <label for="new-location">Location</label>
               <input type="text" id="new-location" name="location" placeholder="e.g. Convention Center, NYC" />
             </div>
+            <div class="form-group flex-2">
+              <label for="new-maps-url">Google Maps Link</label>
+              <input type="url" id="new-maps-url" name="maps_url" placeholder="https://maps.google.com/..." />
+            </div>
             <div class="form-group">
               <label for="new-capacity">Capacity</label>
               <input type="number" id="new-capacity" name="capacity" placeholder="Unlimited" min="1" />
@@ -111,7 +115,7 @@
               </div>
             </div>
             <div class="event-admin-actions">
-              <button class="btn btn-sm btn-outline" onclick="startEditEvent('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>', '<%= event.date || "" %>', '<%= (event.location || "").replace(/'/g, "\\'") %>', '<%= event.capacity || "" %>')">Edit</button>
+              <button class="btn btn-sm btn-outline" onclick="startEditEvent('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>', '<%= event.date || "" %>', '<%= (event.location || "").replace(/'/g, "\\'") %>', '<%= (event.maps_url || "").replace(/'/g, "\\'") %>', '<%= event.capacity || "" %>')">Edit</button>
               <a href="/form-builder/<%= event.id %>" class="btn btn-sm btn-outline">Form Builder</a>
               <button class="btn btn-sm btn-outline" onclick="showEmbed('<%= event.id %>', '<%= event.slug %>')">Embed Form</button>
               <a href="/embed?event=<%= event.slug %>" class="btn btn-sm btn-outline" target="_blank">Reg Form</a>
@@ -135,6 +139,10 @@
                 <div class="form-group flex-2">
                   <label>Location</label>
                   <input type="text" id="edit-location-<%= event.id %>" value="<%= event.location || '' %>" />
+                </div>
+                <div class="form-group flex-2">
+                  <label>Google Maps Link</label>
+                  <input type="url" id="edit-maps-url-<%= event.id %>" value="<%= event.maps_url || '' %>" placeholder="https://maps.google.com/..." />
                 </div>
                 <div class="form-group">
                   <label>Capacity</label>

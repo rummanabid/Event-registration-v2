@@ -39,7 +39,7 @@
       <div class="event-info card">
         <h3><%= reg.event_name %></h3>
         <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %></p><% } %>
-        <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %></p><% } %>
+        <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %><% if (reg.event_maps_url) { %> — <a href="<%= reg.event_maps_url %>" target="_blank">View on Google Maps</a><% } %></p><% } %>
       </div>
 
       <% } else { %>
@@ -74,12 +74,17 @@
         <div class="share-buttons">
           <%
             const qrDirectUrl = baseUrl + '/api/qr/' + reg.qr_token + '.png';
+
+            let eventDetails = '';
+            if (reg.event_date) eventDetails += 'Date: ' + formatDate(reg.event_date) + '\n';
+            if (reg.event_location) eventDetails += 'Location: ' + reg.event_location + '\n';
+            if (reg.event_maps_url) eventDetails += 'Map: ' + reg.event_maps_url + '\n';
+
             const mailSubject = encodeURIComponent('Your registration for ' + reg.event_name);
             const mailBody = encodeURIComponent(
               'Hi ' + reg.full_name + ',\n\nYou are registered for ' + reg.event_name + '.\n\n' +
-              (reg.event_date ? 'Date: ' + formatDate(reg.event_date) + '\n' : '') +
-              (reg.event_location ? 'Location: ' + reg.event_location + '\n' : '') +
-              '\nYour QR code (open to view or screenshot):\n' + qrDirectUrl +
+              eventDetails +
+              '\nYour QR code (open link, then screenshot or save):\n' + qrDirectUrl +
               '\n\nYou will need this QR code to check in at the event.'
             );
           %>
@@ -90,11 +95,16 @@
           <% if (reg.phone) { %>
           <%
             const waPhone = reg.phone.replace(/\D/g, '');
+
+            let waDetails = '';
+            if (reg.event_date) waDetails += 'Date: ' + formatDate(reg.event_date) + '\n';
+            if (reg.event_location) waDetails += 'Location: ' + reg.event_location + '\n';
+            if (reg.event_maps_url) waDetails += 'Map: ' + reg.event_maps_url + '\n';
+
             const waText = encodeURIComponent(
-              'Hi ' + reg.full_name + '! You are registered for ' + reg.event_name + '. ' +
-              (reg.event_date ? 'Date: ' + formatDate(reg.event_date) + '. ' : '') +
-              (reg.event_location ? 'Location: ' + reg.event_location + '. ' : '') +
-              'Open this link to get your QR code for check-in: ' + qrDirectUrl
+              'Hi ' + reg.full_name + '! You are registered for ' + reg.event_name + '.\n\n' +
+              waDetails +
+              '\nYour QR code for check-in:\n' + qrDirectUrl
             );
           %>
           <a href="https://wa.me/<%= waPhone %>?text=<%= waText %>" target="_blank" class="btn btn-outline btn-share btn-whatsapp">
@@ -108,7 +118,7 @@
       <div class="event-info card">
         <h3><%= reg.event_name %></h3>
         <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %></p><% } %>
-        <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %></p><% } %>
+        <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %><% if (reg.event_maps_url) { %> — <a href="<%= reg.event_maps_url %>" target="_blank">View on Google Maps</a><% } %></p><% } %>
         <div class="calendar-links">
           <% if (reg.event_date) { %>
           <% const gcalDate = new Date(reg.event_date); %>
