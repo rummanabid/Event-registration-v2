@@ -11,6 +11,7 @@ document.getElementById('create-event-form').addEventListener('submit', async (e
   const body = {
     name: form.name.value.trim(),
     date: form.date.value || null,
+    time: form.time.value || null,
     location: form.location.value.trim() || null,
     maps_url: form.maps_url.value.trim() || null,
     capacity: form.capacity.value ? parseInt(form.capacity.value) : null
@@ -25,10 +26,11 @@ document.getElementById('create-event-form').addEventListener('submit', async (e
 });
 
 // ---- Edit Event ----
-function startEditEvent(id, name, date, location, maps_url, capacity) {
+function startEditEvent(id, name, date, time, location, maps_url, capacity) {
   document.getElementById(`edit-form-${id}`).classList.remove('hidden');
   document.getElementById(`edit-name-${id}`).value = name;
   document.getElementById(`edit-date-${id}`).value = date;
+  document.getElementById(`edit-time-${id}`).value = time;
   document.getElementById(`edit-location-${id}`).value = location;
   document.getElementById(`edit-maps-url-${id}`).value = maps_url;
   document.getElementById(`edit-capacity-${id}`).value = capacity;
@@ -41,6 +43,7 @@ function cancelEdit(id) {
 async function saveEvent(id) {
   const name = document.getElementById(`edit-name-${id}`).value.trim();
   const date = document.getElementById(`edit-date-${id}`).value;
+  const time = document.getElementById(`edit-time-${id}`).value;
   const location = document.getElementById(`edit-location-${id}`).value.trim();
   const maps_url = document.getElementById(`edit-maps-url-${id}`).value.trim();
   const capacity = document.getElementById(`edit-capacity-${id}`).value;
@@ -49,7 +52,7 @@ async function saveEvent(id) {
 
   const res = await fetch(`/api/events/${id}`, {
     method: 'PUT', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ name, date: date || null, location: location || null, maps_url: maps_url || null, capacity: capacity ? parseInt(capacity) : null })
+    body: JSON.stringify({ name, date: date || null, time: time || null, location: location || null, maps_url: maps_url || null, capacity: capacity ? parseInt(capacity) : null })
   });
   if (res.ok) { window.location.reload(); } else { alert('Failed to save event'); }
 }

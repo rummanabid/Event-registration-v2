@@ -11,6 +11,14 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+function formatTime(timeStr) {
+  if (!timeStr) return null;
+  const [h, m] = timeStr.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 function getBaseUrl(req) {
   return process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 }
@@ -137,7 +145,7 @@ router.get('/register-success', async (req, res) => {
   const { reg_id } = req.query;
   if (!reg_id) return res.redirect('/');
 
-  const reg = db.prepare('SELECT r.*, e.name as event_name, e.date as event_date, e.location as event_location, e.maps_url as event_maps_url, e.slug as event_slug, e.id as event_id FROM registrations r JOIN events e ON r.event_id = e.id WHERE r.id = ?').get(reg_id);
+  const reg = db.prepare('SELECT r.*, e.name as event_name, e.date as event_date, e.time as event_time, e.location as event_location, e.maps_url as event_maps_url, e.slug as event_slug, e.id as event_id FROM registrations r JOIN events e ON r.event_id = e.id WHERE r.id = ?').get(reg_id);
   if (!reg) return res.redirect('/');
 
   const baseUrl = getBaseUrl(req);
@@ -145,7 +153,7 @@ router.get('/register-success', async (req, res) => {
   const qrDataUrl = reg.waitlisted ? null : await generateQRDataURL(qrUrl);
   const isEmbed = req.query.embed === 'true';
 
-  res.render('success', { reg, qrDataUrl, qrUrl, formatDate, isEmbed, baseUrl });
+  res.render('success', { reg, qrDataUrl, qrUrl, formatDate, formatTime, isEmbed, baseUrl });
 });
 
 // QR Scanner

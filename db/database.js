@@ -70,6 +70,7 @@ function migrate() {
   const safeAlter = (sql) => { try { db.exec(sql); } catch (e) {} };
   safeAlter('ALTER TABLE events ADD COLUMN capacity INTEGER');
   safeAlter('ALTER TABLE events ADD COLUMN maps_url TEXT');
+  safeAlter('ALTER TABLE events ADD COLUMN time TEXT');
   safeAlter('ALTER TABLE registrations ADD COLUMN waitlisted INTEGER NOT NULL DEFAULT 0');
 }
 

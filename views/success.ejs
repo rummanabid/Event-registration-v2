@@ -38,7 +38,7 @@
 
       <div class="event-info card">
         <h3><%= reg.event_name %></h3>
-        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %></p><% } %>
+        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %><% if (reg.event_time) { %> at <%= formatTime(reg.event_time) %><% } %></p><% } %>
         <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %><% if (reg.event_maps_url) { %> — <a href="<%= reg.event_maps_url %>" target="_blank">View on Google Maps</a><% } %></p><% } %>
       </div>
 
@@ -76,7 +76,11 @@
             const qrDirectUrl = baseUrl + '/api/qr/' + reg.qr_token + '.png';
 
             let eventDetails = '';
-            if (reg.event_date) eventDetails += 'Date: ' + formatDate(reg.event_date) + '\n';
+            if (reg.event_date) {
+              eventDetails += 'Date: ' + formatDate(reg.event_date);
+              if (reg.event_time) eventDetails += ' at ' + formatTime(reg.event_time);
+              eventDetails += '\n';
+            }
             if (reg.event_location) eventDetails += 'Location: ' + reg.event_location + '\n';
             if (reg.event_maps_url) eventDetails += 'Map: ' + reg.event_maps_url + '\n';
 
@@ -95,15 +99,9 @@
           <% if (reg.phone) { %>
           <%
             const waPhone = reg.phone.replace(/\D/g, '');
-
-            let waDetails = '';
-            if (reg.event_date) waDetails += 'Date: ' + formatDate(reg.event_date) + '\n';
-            if (reg.event_location) waDetails += 'Location: ' + reg.event_location + '\n';
-            if (reg.event_maps_url) waDetails += 'Map: ' + reg.event_maps_url + '\n';
-
             const waText = encodeURIComponent(
               'Hi ' + reg.full_name + '! You are registered for ' + reg.event_name + '.\n\n' +
-              waDetails +
+              eventDetails +
               '\nYour QR code for check-in:\n' + qrDirectUrl
             );
           %>
@@ -117,7 +115,7 @@
 
       <div class="event-info card">
         <h3><%= reg.event_name %></h3>
-        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %></p><% } %>
+        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %><% if (reg.event_time) { %> at <%= formatTime(reg.event_time) %><% } %></p><% } %>
         <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %><% if (reg.event_maps_url) { %> — <a href="<%= reg.event_maps_url %>" target="_blank">View on Google Maps</a><% } %></p><% } %>
         <div class="calendar-links">
           <% if (reg.event_date) { %>
@@ -145,6 +143,7 @@
     const ATTENDEE_NAME    = `<%- reg.full_name.replace(/`/g, '\\`') %>`;
     const ATTENDEE_COMPANY = `<%- (reg.company || '').replace(/`/g, '\\`') %>`;
     const EVENT_NAME       = `<%- reg.event_name.replace(/`/g, '\\`') %>`;
+    const EVENT_DATE       = `<%- reg.event_date ? formatDate(reg.event_date) + (reg.event_time ? ' at ' + formatTime(reg.event_time) : '') : '' %>`;
     const EVENT_SLUG       = '<%= reg.event_slug %>';
     const QR_TOKEN         = '<%= reg.qr_token %>';
 
@@ -165,7 +164,7 @@
         });
 
         const canvas = document.getElementById('badge-canvas');
-        const W = 560, H = 620;
+        const W = 560, H = EVENT_DATE ? 660 : 620;
         canvas.width = W; canvas.height = H;
         const ctx = canvas.getContext('2d');
 
@@ -182,22 +181,32 @@
 
         // Event name
         ctx.fillStyle = GREEN;
-        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.font = 'bold 11px system-ui, sans-serif';
         ctx.textAlign = 'left';
         ctx.fillText('EVENT', PAD, Y);
         Y += 18;
         ctx.fillStyle = '#374151';
         ctx.font = '16px system-ui, sans-serif';
-        Y = wrapText(ctx, EVENT_NAME, PAD, Y, W - PAD * 2, 22) + 28;
+        Y = wrapText(ctx, EVENT_NAME, PAD, Y, W - PAD * 2, 22) + 10;
 
-        // Thin divider
+        // Date + time
+        if (EVENT_DATE) {
+          ctx.fillStyle = '#6b7280';
+          ctx.font = '13px system-ui, sans-serif';
+          ctx.fillText(EVENT_DATE, PAD, Y);
+          Y += 22;
+        }
+
+        Y += 14;
+
+        // Divider
         ctx.strokeStyle = '#e5e7eb';
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(PAD, Y - 14); ctx.lineTo(W - PAD, Y - 14); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(PAD, Y - 8); ctx.lineTo(W - PAD, Y - 8); ctx.stroke();
 
         // Attendee name
         ctx.fillStyle = GREEN;
-        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.font = 'bold 11px system-ui, sans-serif';
         ctx.fillText('NAME', PAD, Y);
         Y += 20;
         ctx.fillStyle = '#111827';
@@ -235,37 +244,6 @@
         ctx.fillStyle = GREEN;
         ctx.fillRect(0, H - 8, W, 8);
 
-        const link = document.createElement('a');
-        link.download = `${EVENT_SLUG}-badge.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } catch (err) {
-        console.error('Badge generation failed:', err);
-        alert('Could not generate badge. Please try again.');
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = origHtml;
-      }
-    }
-        ctx.textAlign = 'center';
-        ctx.fillText('SCAN TO CHECK IN', QR_X + QR_SIZE / 2, QR_Y + QR_SIZE + 16);
-
-        // ── Footer strip ──
-        ctx.fillStyle = GREEN_LITE;
-        ctx.fillRect(SB, H - 38, W - SB, 38);
-        ctx.strokeStyle = GREEN_MID;
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(SB, H - 38); ctx.lineTo(W, H - 38); ctx.stroke();
-        ctx.fillStyle = GREEN;
-        ctx.font = '11px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Present this QR code at the event check-in desk', (W + SB) / 2, H - 14);
-
-        // Right border accent
-        ctx.fillStyle = GREEN;
-        ctx.fillRect(W - 5, 0, 5, H);
-
-        // ── Download ──
         const link = document.createElement('a');
         link.download = `${EVENT_SLUG}-badge.png`;
         link.href = canvas.toDataURL('image/png');
