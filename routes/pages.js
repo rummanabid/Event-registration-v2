@@ -145,7 +145,7 @@ router.get('/register-success', async (req, res) => {
   const { reg_id } = req.query;
   if (!reg_id) return res.redirect('/');
 
-  const reg = db.prepare('SELECT r.*, e.name as event_name, e.date as event_date, e.time as event_time, e.location as event_location, e.maps_url as event_maps_url, e.slug as event_slug, e.id as event_id FROM registrations r JOIN events e ON r.event_id = e.id WHERE r.id = ?').get(reg_id);
+  const reg = db.prepare('SELECT r.*, e.name as event_name, e.date as event_date, e.time as event_time, e.end_time as event_end_time, e.location as event_location, e.maps_url as event_maps_url, e.slug as event_slug, e.id as event_id FROM registrations r JOIN events e ON r.event_id = e.id WHERE r.id = ?').get(reg_id);
   if (!reg) return res.redirect('/');
 
   const baseUrl = getBaseUrl(req);

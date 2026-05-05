@@ -38,14 +38,14 @@ router.get('/events', (req, res) => {
 // POST /api/events
 router.post('/events', (req, res) => {
   const db = getDb();
-  const { name, date, time, location, maps_url, capacity } = req.body;
+  const { name, date, time, end_time, location, maps_url, capacity } = req.body;
   if (!name) return res.status(400).json({ error: 'Event name is required' });
 
   const id = uuidv4();
   const slug = generateSlug(name, db);
   const now = new Date().toISOString();
 
-  db.prepare('INSERT INTO events (id, name, slug, date, time, location, maps_url, capacity, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(id, name, slug, date || null, time || null, location || null, maps_url || null, capacity ? parseInt(capacity) : null, now);
+  db.prepare('INSERT INTO events (id, name, slug, date, time, end_time, location, maps_url, capacity, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(id, name, slug, date || null, time || null, end_time || null, location || null, maps_url || null, capacity ? parseInt(capacity) : null, now);
   db.prepare('INSERT INTO field_config (id, event_id, field_name, is_visible, is_required) VALUES (?, ?, ?, ?, ?)').run(uuidv4(), id, 'phone', 1, 0);
   db.prepare('INSERT INTO field_config (id, event_id, field_name, is_visible, is_required) VALUES (?, ?, ?, ?, ?)').run(uuidv4(), id, 'company', 1, 0);
 
@@ -56,10 +56,10 @@ router.post('/events', (req, res) => {
 // PUT /api/events/:id
 router.put('/events/:id', (req, res) => {
   const db = getDb();
-  const { name, date, time, location, maps_url, capacity } = req.body;
+  const { name, date, time, end_time, location, maps_url, capacity } = req.body;
   if (!name) return res.status(400).json({ error: 'Event name is required' });
 
-  db.prepare('UPDATE events SET name = ?, date = ?, time = ?, location = ?, maps_url = ?, capacity = ? WHERE id = ?').run(name, date || null, time || null, location || null, maps_url || null, capacity ? parseInt(capacity) : null, req.params.id);
+  db.prepare('UPDATE events SET name = ?, date = ?, time = ?, end_time = ?, location = ?, maps_url = ?, capacity = ? WHERE id = ?').run(name, date || null, time || null, end_time || null, location || null, maps_url || null, capacity ? parseInt(capacity) : null, req.params.id);
   const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
   if (!event) return res.status(404).json({ error: 'Event not found' });
   res.json(event);

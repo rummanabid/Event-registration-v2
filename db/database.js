@@ -71,6 +71,7 @@ function migrate() {
   safeAlter('ALTER TABLE events ADD COLUMN capacity INTEGER');
   safeAlter('ALTER TABLE events ADD COLUMN maps_url TEXT');
   safeAlter('ALTER TABLE events ADD COLUMN time TEXT');
+  safeAlter('ALTER TABLE events ADD COLUMN end_time TEXT');
   safeAlter('ALTER TABLE registrations ADD COLUMN waitlisted INTEGER NOT NULL DEFAULT 0');
 }
 

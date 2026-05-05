@@ -22,6 +22,13 @@
   </header>
   <% } %>
 
+  <%
+    function timeRange(start, end) {
+      if (!start) return '';
+      return formatTime(start) + (end ? ' – ' + formatTime(end) : '');
+    }
+  %>
+
   <main class="success-main">
     <div class="success-container">
 
@@ -38,7 +45,8 @@
 
       <div class="event-info card">
         <h3><%= reg.event_name %></h3>
-        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %><% if (reg.event_time) { %> at <%= formatTime(reg.event_time) %><% } %></p><% } %>
+        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %></p><% } %>
+        <% if (reg.event_time) { %><p><strong>Time:</strong> <%= timeRange(reg.event_time, reg.event_end_time) %></p><% } %>
         <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %><% if (reg.event_maps_url) { %> — <a href="<%= reg.event_maps_url %>" target="_blank">View on Google Maps</a><% } %></p><% } %>
       </div>
 
@@ -74,13 +82,11 @@
         <div class="share-buttons">
           <%
             const qrDirectUrl = baseUrl + '/api/qr/' + reg.qr_token + '.png';
+            const timing = timeRange(reg.event_time, reg.event_end_time);
 
             let eventDetails = '';
-            if (reg.event_date) {
-              eventDetails += 'Date: ' + formatDate(reg.event_date);
-              if (reg.event_time) eventDetails += ' at ' + formatTime(reg.event_time);
-              eventDetails += '\n';
-            }
+            if (reg.event_date) eventDetails += 'Date: ' + formatDate(reg.event_date) + '\n';
+            if (timing)         eventDetails += 'Time: ' + timing + '\n';
             if (reg.event_location) eventDetails += 'Location: ' + reg.event_location + '\n';
             if (reg.event_maps_url) eventDetails += 'Map: ' + reg.event_maps_url + '\n';
 
@@ -115,7 +121,8 @@
 
       <div class="event-info card">
         <h3><%= reg.event_name %></h3>
-        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %><% if (reg.event_time) { %> at <%= formatTime(reg.event_time) %><% } %></p><% } %>
+        <% if (reg.event_date) { %><p><strong>Date:</strong> <%= formatDate(reg.event_date) %></p><% } %>
+        <% if (reg.event_time) { %><p><strong>Time:</strong> <%= timeRange(reg.event_time, reg.event_end_time) %></p><% } %>
         <% if (reg.event_location) { %><p><strong>Location:</strong> <%= reg.event_location %><% if (reg.event_maps_url) { %> — <a href="<%= reg.event_maps_url %>" target="_blank">View on Google Maps</a><% } %></p><% } %>
         <div class="calendar-links">
           <% if (reg.event_date) { %>
@@ -143,7 +150,8 @@
     const ATTENDEE_NAME    = `<%- reg.full_name.replace(/`/g, '\\`') %>`;
     const ATTENDEE_COMPANY = `<%- (reg.company || '').replace(/`/g, '\\`') %>`;
     const EVENT_NAME       = `<%- reg.event_name.replace(/`/g, '\\`') %>`;
-    const EVENT_DATE       = `<%- reg.event_date ? formatDate(reg.event_date) + (reg.event_time ? ' at ' + formatTime(reg.event_time) : '') : '' %>`;
+    const EVENT_DATE       = `<%- reg.event_date ? formatDate(reg.event_date) : '' %>`;
+    const EVENT_TIME       = `<%- timeRange(reg.event_time, reg.event_end_time) %>`;
     const EVENT_SLUG       = '<%= reg.event_slug %>';
     const QR_TOKEN         = '<%= reg.qr_token %>';
 
@@ -164,89 +172,115 @@
         });
 
         const canvas = document.getElementById('badge-canvas');
-        const W = 560, H = EVENT_DATE ? 660 : 620;
-        canvas.width = W; canvas.height = H;
+        const PAD = 44;
+        const W = 580;
+        const QR_SIZE = 230;
+
+        // Calculate height based on content
+        let estH = 80;                              // top bar + initial padding
+        estH += 18 + 24;                            // EVENT label + name
+        if (EVENT_DATE) estH += 20;                 // date
+        if (EVENT_TIME) estH += 20;                 // time
+        estH += 32;                                 // gap + divider
+        estH += 18 + 44;                            // NAME label + name (1 line)
+        if (ATTENDEE_COMPANY) estH += 28;           // company
+        estH += 32 + QR_SIZE + 24 + 24 + 40;       // gap + QR + hint + bottom bar + extra
+
+        canvas.width = W; canvas.height = estH;
         const ctx = canvas.getContext('2d');
 
         // White background
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, W, H);
+        ctx.fillRect(0, 0, W, estH);
 
         // Green top bar
         ctx.fillStyle = GREEN;
-        ctx.fillRect(0, 0, W, 8);
+        ctx.fillRect(0, 0, W, 10);
 
-        const PAD = 36;
-        let Y = PAD + 24;
+        let Y = 52;
 
-        // Event name
-        ctx.fillStyle = GREEN;
-        ctx.font = 'bold 11px system-ui, sans-serif';
+        // ── EVENT section ──
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = 'bold 10px system-ui, sans-serif';
         ctx.textAlign = 'left';
+        ctx.letterSpacing = '1px';
         ctx.fillText('EVENT', PAD, Y);
-        Y += 18;
-        ctx.fillStyle = '#374151';
-        ctx.font = '16px system-ui, sans-serif';
-        Y = wrapText(ctx, EVENT_NAME, PAD, Y, W - PAD * 2, 22) + 10;
+        Y += 20;
 
-        // Date + time
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold 18px system-ui, sans-serif';
+        Y = wrapText(ctx, EVENT_NAME, PAD, Y, W - PAD * 2, 24) + 10;
+
         if (EVENT_DATE) {
           ctx.fillStyle = '#6b7280';
           ctx.font = '13px system-ui, sans-serif';
           ctx.fillText(EVENT_DATE, PAD, Y);
-          Y += 22;
+          Y += 20;
         }
 
-        Y += 14;
+        if (EVENT_TIME) {
+          ctx.fillStyle = '#6b7280';
+          ctx.font = '13px system-ui, sans-serif';
+          ctx.fillText(EVENT_TIME, PAD, Y);
+          Y += 20;
+        }
+
+        Y += 18;
 
         // Divider
         ctx.strokeStyle = '#e5e7eb';
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(PAD, Y - 8); ctx.lineTo(W - PAD, Y - 8); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(PAD, Y); ctx.lineTo(W - PAD, Y); ctx.stroke();
+        Y += 20;
 
-        // Attendee name
-        ctx.fillStyle = GREEN;
-        ctx.font = 'bold 11px system-ui, sans-serif';
+        // ── NAME section ──
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = 'bold 10px system-ui, sans-serif';
         ctx.fillText('NAME', PAD, Y);
         Y += 20;
-        ctx.fillStyle = '#111827';
-        ctx.font = 'bold 34px system-ui, sans-serif';
-        Y = wrapText(ctx, ATTENDEE_NAME, PAD, Y, W - PAD * 2, 40) + 16;
 
-        // Company
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 36px system-ui, sans-serif';
+        Y = wrapText(ctx, ATTENDEE_NAME, PAD, Y, W - PAD * 2, 42) + 10;
+
         if (ATTENDEE_COMPANY) {
           ctx.fillStyle = '#6b7280';
-          ctx.font = '18px system-ui, sans-serif';
-          Y = wrapText(ctx, ATTENDEE_COMPANY, PAD, Y, W - PAD * 2, 24) + 8;
+          ctx.font = '16px system-ui, sans-serif';
+          Y = wrapText(ctx, ATTENDEE_COMPANY, PAD, Y, W - PAD * 2, 22) + 6;
         }
 
-        Y += 20;
+        Y += 28;
 
-        // QR code — centred
-        const QR_SIZE = 220;
+        // ── QR code — centred ──
         const QR_X = (W - QR_SIZE) / 2;
-        ctx.shadowColor = 'rgba(0,0,0,0.07)';
-        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'rgba(0,0,0,0.06)';
+        ctx.shadowBlur = 12;
         ctx.fillStyle = GREEN_LITE;
-        roundRect(ctx, QR_X - 12, Y - 12, QR_SIZE + 24, QR_SIZE + 24, 16);
+        roundRect(ctx, QR_X - 14, Y - 14, QR_SIZE + 28, QR_SIZE + 28, 18);
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.drawImage(qrBitmap, QR_X, Y, QR_SIZE, QR_SIZE);
-        Y += QR_SIZE + 16;
+        Y += QR_SIZE + 20;
 
-        // Scan hint
+        // Hint
         ctx.fillStyle = '#9ca3af';
         ctx.font = '12px system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('Show this QR code at the check-in desk', W / 2, Y);
+        Y += 28;
 
-        // Green bottom bar
-        ctx.fillStyle = GREEN;
-        ctx.fillRect(0, H - 8, W, 8);
+        // Trim canvas to actual content + bottom bar
+        const finalH = Y + 10;
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = W; finalCanvas.height = finalH;
+        const fCtx = finalCanvas.getContext('2d');
+        fCtx.drawImage(canvas, 0, 0);
+        fCtx.fillStyle = GREEN;
+        fCtx.fillRect(0, finalH - 10, W, 10);
 
         const link = document.createElement('a');
         link.download = `${EVENT_SLUG}-badge.png`;
-        link.href = canvas.toDataURL('image/png');
+        link.href = finalCanvas.toDataURL('image/png');
         link.click();
       } catch (err) {
         console.error('Badge generation failed:', err);
