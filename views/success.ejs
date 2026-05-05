@@ -171,92 +171,74 @@
           img.src = `/api/qr/${QR_TOKEN}.png`;
         });
 
-        const canvas = document.getElementById('badge-canvas');
-        const PAD = 44;
-        const W = 580;
-        const QR_SIZE = 230;
+        const W   = 600;
+        const PAD = 48;
+        const QR_SIZE = 240;
 
-        // Calculate height based on content
-        let estH = 80;                              // top bar + initial padding
-        estH += 18 + 24;                            // EVENT label + name
-        if (EVENT_DATE) estH += 20;                 // date
-        if (EVENT_TIME) estH += 20;                 // time
-        estH += 32;                                 // gap + divider
-        estH += 18 + 44;                            // NAME label + name (1 line)
-        if (ATTENDEE_COMPANY) estH += 28;           // company
-        estH += 32 + QR_SIZE + 24 + 24 + 40;       // gap + QR + hint + bottom bar + extra
+        // Build date+time line
+        let dateLine = '';
+        if (EVENT_DATE) {
+          dateLine = EVENT_DATE;
+          if (EVENT_TIME) dateLine += '  ·  ' + EVENT_TIME;
+        } else if (EVENT_TIME) {
+          dateLine = EVENT_TIME;
+        }
 
-        canvas.width = W; canvas.height = estH;
-        const ctx = canvas.getContext('2d');
+        // ── Measure content to size canvas precisely ──
+        const measureCanvas = document.createElement('canvas');
+        measureCanvas.width = W; measureCanvas.height = 10;
+        const mCtx = measureCanvas.getContext('2d');
 
-        // White background
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, W, estH);
+        // We'll draw on a tall scratch canvas then copy
+        const scratch = document.getElementById('badge-canvas');
+        scratch.width = W; scratch.height = 1200;
+        const ctx = scratch.getContext('2d');
+        ctx.clearRect(0, 0, W, 1200);
 
-        // Green top bar
-        ctx.fillStyle = GREEN;
-        ctx.fillRect(0, 0, W, 10);
-
-        let Y = 52;
+        const SECTION_GAP = 28;
+        let Y = 56;
 
         // ── EVENT section ──
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = 'bold 10px system-ui, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.letterSpacing = '1px';
-        ctx.fillText('EVENT', PAD, Y);
-        Y += 20;
-
-        ctx.fillStyle = '#1f2937';
-        ctx.font = 'bold 18px system-ui, sans-serif';
-        Y = wrapText(ctx, EVENT_NAME, PAD, Y, W - PAD * 2, 24) + 10;
-
-        if (EVENT_DATE) {
+        drawLabel(ctx, 'EVENT', PAD, Y);
+        Y += 22;
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 20px system-ui, sans-serif';
+        Y = wrapText(ctx, EVENT_NAME, PAD, Y, W - PAD * 2, 26) + 8;
+        if (dateLine) {
           ctx.fillStyle = '#6b7280';
-          ctx.font = '13px system-ui, sans-serif';
-          ctx.fillText(EVENT_DATE, PAD, Y);
+          ctx.font = '14px system-ui, sans-serif';
+          ctx.fillText(dateLine, PAD, Y);
           Y += 20;
         }
 
-        if (EVENT_TIME) {
-          ctx.fillStyle = '#6b7280';
-          ctx.font = '13px system-ui, sans-serif';
-          ctx.fillText(EVENT_TIME, PAD, Y);
-          Y += 20;
-        }
-
-        Y += 18;
+        Y += SECTION_GAP;
 
         // Divider
-        ctx.strokeStyle = '#e5e7eb';
+        ctx.strokeStyle = '#d1d5db';
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(PAD, Y); ctx.lineTo(W - PAD, Y); ctx.stroke();
-        Y += 20;
+        Y += SECTION_GAP;
 
-        // ── NAME section ──
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = 'bold 10px system-ui, sans-serif';
-        ctx.fillText('NAME', PAD, Y);
-        Y += 20;
-
+        // ── ATTENDEE section ──
+        drawLabel(ctx, 'ATTENDEE', PAD, Y);
+        Y += 22;
         ctx.fillStyle = '#111827';
-        ctx.font = 'bold 36px system-ui, sans-serif';
-        Y = wrapText(ctx, ATTENDEE_NAME, PAD, Y, W - PAD * 2, 42) + 10;
-
+        ctx.font = 'bold 38px system-ui, sans-serif';
+        Y = wrapText(ctx, ATTENDEE_NAME, PAD, Y, W - PAD * 2, 46) + 8;
         if (ATTENDEE_COMPANY) {
           ctx.fillStyle = '#6b7280';
-          ctx.font = '16px system-ui, sans-serif';
-          Y = wrapText(ctx, ATTENDEE_COMPANY, PAD, Y, W - PAD * 2, 22) + 6;
+          ctx.font = '17px system-ui, sans-serif';
+          Y = wrapText(ctx, ATTENDEE_COMPANY, PAD, Y, W - PAD * 2, 24) + 4;
         }
 
-        Y += 28;
+        Y += SECTION_GAP;
 
-        // ── QR code — centred ──
+        // ── QR code centred ──
         const QR_X = (W - QR_SIZE) / 2;
         ctx.shadowColor = 'rgba(0,0,0,0.06)';
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 14;
         ctx.fillStyle = GREEN_LITE;
-        roundRect(ctx, QR_X - 14, Y - 14, QR_SIZE + 28, QR_SIZE + 28, 18);
+        roundRect(ctx, QR_X - 16, Y - 16, QR_SIZE + 32, QR_SIZE + 32, 20);
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.drawImage(qrBitmap, QR_X, Y, QR_SIZE, QR_SIZE);
@@ -267,20 +249,32 @@
         ctx.font = '12px system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('Show this QR code at the check-in desk', W / 2, Y);
-        Y += 28;
+        Y += 14;
 
-        // Trim canvas to actual content + bottom bar
-        const finalH = Y + 10;
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = W; finalCanvas.height = finalH;
-        const fCtx = finalCanvas.getContext('2d');
-        fCtx.drawImage(canvas, 0, 0);
+        // ── Copy to final sized canvas ──
+        const finalH = Y + 44;  // room for bottom bar
+        const final = document.createElement('canvas');
+        final.width = W; final.height = finalH;
+        const fCtx = final.getContext('2d');
+
+        // White bg
+        fCtx.fillStyle = '#ffffff';
+        fCtx.fillRect(0, 0, W, finalH);
+
+        // Green top bar
         fCtx.fillStyle = GREEN;
-        fCtx.fillRect(0, finalH - 10, W, 10);
+        fCtx.fillRect(0, 0, W, 12);
+
+        // Copy content from scratch
+        fCtx.drawImage(scratch, 0, 0);
+
+        // Green bottom bar
+        fCtx.fillStyle = GREEN;
+        fCtx.fillRect(0, finalH - 12, W, 12);
 
         const link = document.createElement('a');
         link.download = `${EVENT_SLUG}-badge.png`;
-        link.href = finalCanvas.toDataURL('image/png');
+        link.href = final.toDataURL('image/png');
         link.click();
       } catch (err) {
         console.error('Badge generation failed:', err);
@@ -289,6 +283,20 @@
         btn.disabled = false;
         btn.innerHTML = origHtml;
       }
+    }
+
+    function drawLabel(ctx, text, x, y) {
+      ctx.save();
+      ctx.fillStyle = '#1a5c2a';
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      // Simulate letter-spacing by drawing chars individually
+      let cx = x;
+      for (const ch of text) {
+        ctx.fillText(ch, cx, y);
+        cx += ctx.measureText(ch).width + 1.5;
+      }
+      ctx.restore();
     }
 
     function roundRect(ctx, x, y, w, h, r) {
