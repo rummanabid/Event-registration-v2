@@ -139,9 +139,7 @@
     const QR_TOKEN         = '<%= reg.qr_token %>';
 
     const GREEN      = '#1a5c2a';
-    const GREEN_DARK = '#14471f';
     const GREEN_LITE = '#e8f5e9';
-    const GREEN_MID  = '#bbf7d0';
 
     async function downloadBadgeCard(btn) {
       btn.disabled = true;
@@ -149,7 +147,6 @@
       btn.textContent = 'Generating…';
 
       try {
-        // Load QR from the dedicated PNG endpoint — same origin, no taint issues
         const qrBitmap = await new Promise((resolve, reject) => {
           const img = new Image();
           img.onload = () => createImageBitmap(img).then(resolve).catch(reject);
@@ -158,95 +155,88 @@
         });
 
         const canvas = document.getElementById('badge-canvas');
-        const W = 740, H = 440;
+        const W = 560, H = 620;
         canvas.width = W; canvas.height = H;
         const ctx = canvas.getContext('2d');
 
-        // ── Overall white background ──
+        // White background
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, W, H);
 
-        // ── Left sidebar (green column) ──
-        const SB = 185;
+        // Green top bar
         ctx.fillStyle = GREEN;
-        ctx.fillRect(0, 0, SB, H);
+        ctx.fillRect(0, 0, W, 8);
 
-        // Subtle bottom accent on sidebar
-        ctx.fillStyle = GREEN_DARK;
-        ctx.fillRect(0, H - 8, SB, 8);
+        const PAD = 36;
+        let Y = PAD + 24;
 
-        // Sunburst logo centred in sidebar
-        const logoSize = 110;
-        const logoX = (SB - logoSize) / 2;
-        const logoY = 28;
-        drawSunburst(ctx, logoX, logoY, logoSize, 'rgba(255,255,255,0.92)');
-
-        // Company name below logo
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 13px system-ui, sans-serif';
-        ctx.fillText('al jammaz', SB / 2, logoY + logoSize + 22);
-        ctx.fillStyle = 'rgba(255,255,255,0.65)';
-        ctx.font = '12px system-ui, sans-serif';
-        ctx.fillText('technologies', SB / 2, logoY + logoSize + 38);
-
-        // ── Right content area ──
-        const RX = SB + 26;
-        const QR_SIZE = 195;
-        const QR_X = W - QR_SIZE - 22;
-        const maxW = QR_X - RX - 16;
-
-        // Top thin green accent line
-        ctx.fillStyle = GREEN_MID;
-        ctx.fillRect(SB, 0, W - SB, 5);
-
-        let TY = 36;
-
-        // EVENT label + name
+        // Event name
         ctx.fillStyle = GREEN;
-        ctx.font = 'bold 9px system-ui, sans-serif';
+        ctx.font = 'bold 12px system-ui, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('EVENT', RX, TY);
-        TY += 16;
+        ctx.fillText('EVENT', PAD, Y);
+        Y += 18;
         ctx.fillStyle = '#374151';
-        ctx.font = '14px system-ui, sans-serif';
-        TY = wrapText(ctx, EVENT_NAME, RX, TY, maxW, 18) + 20;
+        ctx.font = '16px system-ui, sans-serif';
+        Y = wrapText(ctx, EVENT_NAME, PAD, Y, W - PAD * 2, 22) + 28;
 
-        // Divider
+        // Thin divider
         ctx.strokeStyle = '#e5e7eb';
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(RX, TY - 8); ctx.lineTo(QR_X - 12, TY - 8); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(PAD, Y - 14); ctx.lineTo(W - PAD, Y - 14); ctx.stroke();
 
-        // ATTENDEE label + name
+        // Attendee name
         ctx.fillStyle = GREEN;
-        ctx.font = 'bold 9px system-ui, sans-serif';
-        ctx.fillText('ATTENDEE', RX, TY + 4);
-        TY += 20;
+        ctx.font = 'bold 12px system-ui, sans-serif';
+        ctx.fillText('NAME', PAD, Y);
+        Y += 20;
         ctx.fillStyle = '#111827';
-        ctx.font = 'bold 30px system-ui, sans-serif';
-        TY = wrapText(ctx, ATTENDEE_NAME, RX, TY, maxW, 36) + 14;
+        ctx.font = 'bold 34px system-ui, sans-serif';
+        Y = wrapText(ctx, ATTENDEE_NAME, PAD, Y, W - PAD * 2, 40) + 16;
 
         // Company
         if (ATTENDEE_COMPANY) {
           ctx.fillStyle = '#6b7280';
-          ctx.font = '15px system-ui, sans-serif';
-          wrapText(ctx, ATTENDEE_COMPANY, RX, TY, maxW, 20);
+          ctx.font = '18px system-ui, sans-serif';
+          Y = wrapText(ctx, ATTENDEE_COMPANY, PAD, Y, W - PAD * 2, 24) + 8;
         }
 
-        // ── QR code — right, vertically centred ──
-        const QR_Y = (H - QR_SIZE) / 2;
-        // Shadow effect
-        ctx.shadowColor = 'rgba(0,0,0,0.08)';
-        ctx.shadowBlur = 12;
+        Y += 20;
+
+        // QR code — centred
+        const QR_SIZE = 220;
+        const QR_X = (W - QR_SIZE) / 2;
+        ctx.shadowColor = 'rgba(0,0,0,0.07)';
+        ctx.shadowBlur = 10;
         ctx.fillStyle = GREEN_LITE;
-        roundRect(ctx, QR_X - 10, QR_Y - 10, QR_SIZE + 20, QR_SIZE + 20, 14);
+        roundRect(ctx, QR_X - 12, Y - 12, QR_SIZE + 24, QR_SIZE + 24, 16);
         ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.drawImage(qrBitmap, QR_X, QR_Y, QR_SIZE, QR_SIZE);
+        ctx.drawImage(qrBitmap, QR_X, Y, QR_SIZE, QR_SIZE);
+        Y += QR_SIZE + 16;
 
-        // "SCAN" label under QR
+        // Scan hint
         ctx.fillStyle = '#9ca3af';
-        ctx.font = '10px system-ui, sans-serif';
+        ctx.font = '12px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Show this QR code at the check-in desk', W / 2, Y);
+
+        // Green bottom bar
+        ctx.fillStyle = GREEN;
+        ctx.fillRect(0, H - 8, W, 8);
+
+        const link = document.createElement('a');
+        link.download = `${EVENT_SLUG}-badge.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (err) {
+        console.error('Badge generation failed:', err);
+        alert('Could not generate badge. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
+    }
         ctx.textAlign = 'center';
         ctx.fillText('SCAN TO CHECK IN', QR_X + QR_SIZE / 2, QR_Y + QR_SIZE + 16);
 
@@ -277,29 +267,6 @@
         btn.disabled = false;
         btn.innerHTML = origHtml;
       }
-    }
-
-    // Draw Al Jammaz sunburst logo — fan of lines from bottom-left corner, clipped to square
-    function drawSunburst(ctx, x, y, size, color) {
-      ctx.save();
-      ctx.beginPath(); ctx.rect(x, y, size, size); ctx.clip();
-      const ox = x + 1, oy = y + size - 1;
-      const N = 14;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = Math.max(2, size / 26);
-      ctx.lineCap = 'butt';
-      for (let i = 0; i <= N; i++) {
-        const a = (i / N) * Math.PI / 2;
-        const len = size * 2.4;
-        ctx.beginPath();
-        ctx.moveTo(ox, oy);
-        ctx.lineTo(ox + Math.cos(a) * len, oy - Math.sin(a) * len);
-        ctx.stroke();
-      }
-      ctx.restore();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = Math.max(2, size / 26);
-      ctx.strokeRect(x, y, size, size);
     }
 
     function roundRect(ctx, x, y, w, h, r) {
