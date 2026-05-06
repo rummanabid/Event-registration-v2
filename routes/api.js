@@ -534,17 +534,24 @@ router.get('/events/:id/badges/illustrator', async (req, res) => {
     ? new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
     : '';
 
-  // Build CSV rows — @qr_image column tells Illustrator to treat it as an image variable
-  const csvRows = registrations.map(r => ({
-    name: r.full_name,
-    company: r.company || '',
-    email: r.email,
-    phone: r.phone || '',
-    event_name: event.name,
-    event_date: eventDate,
-    event_location: event.location || '',
-    '@qr_image': `qr_${r.id}.png`
-  }));
+  const pad = String(registrations.length).length;
+  const safeName = (name) => name.replace(/[^a-zA-Z0-9؀-ۿ ]/g, '').trim().replace(/\s+/g, '_').slice(0, 40);
+
+  // Build CSV rows — @qr_image filename matches the QR PNG in the ZIP
+  const csvRows = registrations.map((r, i) => {
+    const filename = `${String(i + 1).padStart(pad, '0')}_${safeName(r.full_name)}.png`;
+    return {
+      '#': i + 1,
+      name: r.full_name,
+      company: r.company || '',
+      email: r.email,
+      phone: r.phone || '',
+      event_name: event.name,
+      event_date: eventDate,
+      event_location: event.location || '',
+      '@qr_image': filename
+    };
+  });
 
   const csv = stringify(csvRows, { header: true });
 
@@ -555,42 +562,43 @@ router.get('/events/:id/badges/illustrator', async (req, res) => {
   const archive = archiver('zip', { zlib: { level: 6 } });
   archive.pipe(res);
 
-  // Add the Data Merge CSV
   archive.append(csv, { name: 'data.csv' });
 
-  // Add a README
   const readme = [
     `Illustrator Data Merge Export — ${event.name}`,
     '='.repeat(50),
     '',
     'HOW TO USE:',
-    '1. Open your Illustrator badge template',
-    '2. Go to Window > Utilities > Variables  (or Window > Data Merge in newer versions)',
-    '3. Click the menu icon > Select Data Source',
-    '4. Choose "data.csv" from this folder',
-    '5. Make sure this folder also contains all the qr_*.png files',
-    '6. Your template placeholders should match these column names:',
+    '1. Extract this ZIP — keep ALL files in the same folder',
+    '2. Open your Illustrator badge template',
+    '3. Go to Window > Utilities > Variables (or Window > Data Merge)',
+    '4. Click the menu icon > Select Data Source > choose "data.csv"',
+    '5. Template placeholders:',
     '   <<name>>           — Attendee full name',
     '   <<company>>        — Company / organisation',
     '   <<email>>          — Email address',
     '   <<phone>>          — Phone number',
     '   <<event_name>>     — Event name',
-    '   <<event_date>>     — Event date (formatted)',
+    '   <<event_date>>     — Event date',
     '   <<event_location>> — Event location',
-    '   <<@qr_image>>      — QR code image (link a rectangle/image frame to this)',
+    '   <<@qr_image>>      — QR code image (link an image frame to this)',
     '',
-    '7. Click "Create Merged Document" to generate all badges at once',
+    'QR FILE NAMING:',
+    '  Files are named  001_Full_Name.png, 002_Full_Name.png, etc.',
+    '  Row # in data.csv matches the number in the filename — easy to verify.',
     '',
     `Total attendees: ${registrations.length}`,
   ].join('\n');
 
   archive.append(readme, { name: 'README.txt' });
 
-  // Add each QR code PNG
-  for (const r of registrations) {
+  // Add each QR code PNG with numbered + name filename
+  for (let i = 0; i < registrations.length; i++) {
+    const r = registrations[i];
+    const filename = `${String(i + 1).padStart(pad, '0')}_${safeName(r.full_name)}.png`;
     const qrUrl = `${baseUrl}/checkin/${r.qr_token}`;
     const qrBuffer = await generateQRBuffer(qrUrl);
-    archive.append(qrBuffer, { name: `qr_${r.id}.png` });
+    archive.append(qrBuffer, { name: filename });
   }
 
   await archive.finalize();
