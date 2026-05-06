@@ -526,7 +526,7 @@ router.get('/events/:id/badges/illustrator', async (req, res) => {
   if (!event) return res.status(404).json({ error: 'Event not found' });
 
   const registrations = db.prepare(
-    'SELECT * FROM registrations WHERE event_id = ? AND waitlisted = 0 ORDER BY full_name'
+    'SELECT * FROM registrations WHERE event_id = ? AND waitlisted = 0 ORDER BY full_name COLLATE NOCASE'
   ).all(req.params.id);
 
   const baseUrl = getBaseUrl(req);
