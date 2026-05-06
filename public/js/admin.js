@@ -168,6 +168,75 @@ function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ---- Import Registrations ----
+let importEventId = null;
+let importFile = null;
+
+function openImport(eventId, eventName) {
+  importEventId = eventId;
+  importFile = null;
+  document.getElementById('import-event-name').textContent = eventName;
+  document.getElementById('import-file-name').textContent = '';
+  document.getElementById('import-result').style.display = 'none';
+  document.getElementById('import-file-input').value = '';
+  document.getElementById('import-submit-btn').disabled = true;
+  document.getElementById('import-modal').classList.remove('hidden');
+
+  const dz = document.getElementById('import-drop-zone');
+  dz.ondragover = (e) => { e.preventDefault(); dz.style.borderColor = '#2563eb'; };
+  dz.ondragleave = () => { dz.style.borderColor = '#cbd5e1'; };
+  dz.ondrop = (e) => {
+    e.preventDefault(); dz.style.borderColor = '#cbd5e1';
+    const f = e.dataTransfer.files[0];
+    if (f) setImportFile(f);
+  };
+}
+
+function onImportFileChosen(input) {
+  if (input.files[0]) setImportFile(input.files[0]);
+}
+
+function setImportFile(f) {
+  importFile = f;
+  document.getElementById('import-file-name').textContent = f.name;
+  document.getElementById('import-submit-btn').disabled = false;
+  document.getElementById('import-result').style.display = 'none';
+}
+
+async function submitImport() {
+  if (!importFile || !importEventId) return;
+  const btn = document.getElementById('import-submit-btn');
+  btn.disabled = true; btn.textContent = 'Importing…';
+
+  const fd = new FormData();
+  fd.append('file', importFile);
+
+  try {
+    const res = await fetch(`/api/events/${importEventId}/import`, { method: 'POST', body: fd });
+    const data = await res.json();
+    const resultEl = document.getElementById('import-result');
+    resultEl.style.display = 'block';
+    if (res.ok) {
+      resultEl.style.background = '#f0fdf4'; resultEl.style.color = '#15803d'; resultEl.style.border = '1px solid #bbf7d0';
+      resultEl.innerHTML = `<strong>Done!</strong> Imported <strong>${data.imported}</strong> registrations.${data.skipped > 0 ? ` <span style="color:#92400e">${data.skipped} skipped (missing name/email or duplicate).</span>` : ''}${data.errors.length ? '<br><small style="color:#b91c1c">' + data.errors.join('<br>') + '</small>' : ''}`;
+      if (data.imported > 0) {
+        btn.textContent = 'Done — Reload Page';
+        btn.disabled = false;
+        btn.onclick = () => window.location.reload();
+        return;
+      }
+    } else {
+      resultEl.style.background = '#fef2f2'; resultEl.style.color = '#b91c1c'; resultEl.style.border = '1px solid #fecaca';
+      resultEl.textContent = data.error || 'Import failed';
+    }
+  } catch {
+    const resultEl = document.getElementById('import-result');
+    resultEl.style.display = 'block'; resultEl.style.background = '#fef2f2'; resultEl.style.color = '#b91c1c'; resultEl.style.border = '1px solid #fecaca';
+    resultEl.textContent = 'Network error';
+  }
+  btn.disabled = false; btn.textContent = 'Upload & Import';
+}
+
 if (window.location.hash) {
   const id = window.location.hash.replace('#event-', '');
   if (id && document.getElementById(`event-${id}`)) {

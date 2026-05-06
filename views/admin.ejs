@@ -132,6 +132,10 @@
                 Print Badges
               </a>
               <button class="btn btn-sm btn-outline" onclick="loadRegistrations('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>')">Registrations</button>
+              <button class="btn btn-sm btn-outline" onclick="openImport('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Import
+              </button>
               <button class="btn btn-sm btn-danger" onclick="deleteEvent('<%= event.id %>', '<%= event.name.replace(/'/g, "\\'") %>')">Delete</button>
             </div>
             <div class="edit-form hidden" id="edit-form-<%= event.id %>">
@@ -223,6 +227,32 @@
         </div>
         <div class="mt-2">
           <a id="embed-preview-link" href="#" target="_blank" class="btn btn-outline btn-sm">Preview Form</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div id="import-modal" class="modal hidden">
+    <div class="modal-backdrop" onclick="closeModal('import-modal')"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Import Registrations — <span id="import-event-name"></span></h3>
+        <button onclick="closeModal('import-modal')" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted" style="margin-bottom:12px">Upload a <strong>CSV or Excel (.xlsx)</strong> file. Required columns: <code>Full Name</code>, <code>Email</code>. Optional: <code>Phone</code>, <code>Company</code>.</p>
+        <p class="text-muted" style="margin-bottom:16px;font-size:.85rem">Duplicates (same email for this event) are automatically skipped.</p>
+        <div id="import-drop-zone" style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" style="margin-bottom:10px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p style="margin:0;color:#64748b">Drag &amp; drop your file here, or <label for="import-file-input" style="color:#2563eb;cursor:pointer;text-decoration:underline">browse</label></p>
+          <p id="import-file-name" style="margin:8px 0 0;font-size:.85rem;color:#475569"></p>
+          <input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="onImportFileChosen(this)" />
+        </div>
+        <div id="import-result" style="display:none;margin-top:16px;padding:14px;border-radius:8px;font-size:.9rem"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-outline btn-sm" onclick="closeModal('import-modal')">Cancel</button>
+          <button id="import-submit-btn" class="btn btn-primary btn-sm" onclick="submitImport()" disabled>Upload &amp; Import</button>
         </div>
       </div>
     </div>

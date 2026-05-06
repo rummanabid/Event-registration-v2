@@ -7,6 +7,8 @@ const { isEmailConfigured, sendQRCodeEmail } = require('../utils/email');
 const { stringify } = require('csv-stringify/sync');
 const ExcelJS = require('exceljs');
 const archiver = require('archiver');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 function getBaseUrl(req) {
   return process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
@@ -206,6 +208,100 @@ router.post('/register', async (req, res) => {
   }
 
   res.status(201).json({ id, qrToken, qrDataUrl, qrUrl, waitlisted: isWaitlisted === 1 });
+});
+
+// POST /api/events/:id/import  (CSV or XLSX bulk import)
+router.post('/events/:id/import', upload.single('file'), async (req, res) => {
+  const db = getDb();
+  const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  const ext = (req.file.originalname || '').split('.').pop().toLowerCase();
+  let rows = [];
+
+  try {
+    if (ext === 'xlsx' || ext === 'xls') {
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(req.file.buffer);
+      const sheet = wb.worksheets[0];
+      if (!sheet) return res.status(400).json({ error: 'No worksheet found in file' });
+      const headers = [];
+      sheet.getRow(1).eachCell((cell, col) => { headers[col] = String(cell.value || '').trim().toLowerCase(); });
+      sheet.eachRow((row, rowNum) => {
+        if (rowNum === 1) return;
+        const obj = {};
+        row.eachCell((cell, col) => { obj[headers[col]] = cell.value === null ? '' : String(cell.value).trim(); });
+        rows.push(obj);
+      });
+    } else {
+      // Treat as CSV
+      const text = req.file.buffer.toString('utf8').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) return res.status(400).json({ error: 'File appears empty' });
+      const parseCSVLine = (line) => {
+        const result = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') { inQ = !inQ; continue; }
+          if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; continue; }
+          cur += ch;
+        }
+        result.push(cur.trim());
+        return result;
+      };
+      const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/^"|"$/g, ''));
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const vals = parseCSVLine(lines[i]);
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = (vals[idx] || '').replace(/^"|"$/g, ''); });
+        rows.push(obj);
+      }
+    }
+  } catch (err) {
+    return res.status(400).json({ error: 'Could not parse file: ' + err.message });
+  }
+
+  // Normalise column names — accept common variants
+  const normalise = (row) => {
+    const get = (...keys) => { for (const k of keys) { if (row[k] !== undefined && row[k] !== '') return row[k]; } return ''; };
+    return {
+      full_name: get('full name', 'fullname', 'name', 'full_name', 'attendee name', 'attendee'),
+      email:     get('email', 'email address', 'e-mail', 'e_mail'),
+      phone:     get('phone', 'phone number', 'mobile', 'mobile number', 'cell', 'telephone'),
+      company:   get('company', 'company name', 'organisation', 'organization', 'employer'),
+    };
+  };
+
+  const now = new Date().toISOString();
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO registrations (id, event_id, full_name, email, phone, company, qr_token, checked_in, waitlisted, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
+  `);
+
+  let imported = 0, skipped = 0, errors = [];
+  const importAll = db.transaction(() => {
+    for (const raw of rows) {
+      const r = normalise(raw);
+      if (!r.full_name) { skipped++; continue; }
+      const email = (r.email || '').toLowerCase().trim();
+      if (!email) { skipped++; continue; }
+      // Skip duplicates within this event
+      const existing = db.prepare('SELECT id FROM registrations WHERE event_id = ? AND email = ?').get(event.id, email);
+      if (existing) { skipped++; continue; }
+      try {
+        insert.run(uuidv4(), event.id, r.full_name, email, r.phone || null, r.company || null, uuidv4(), now);
+        imported++;
+      } catch (e) {
+        errors.push(`Row "${r.full_name}": ${e.message}`);
+      }
+    }
+  });
+
+  importAll();
+  res.json({ imported, skipped, errors: errors.slice(0, 10) });
 });
 
 // POST /api/checkin
