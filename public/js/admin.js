@@ -217,8 +217,24 @@ async function submitImport() {
     const resultEl = document.getElementById('import-result');
     resultEl.style.display = 'block';
     if (res.ok) {
-      resultEl.style.background = '#f0fdf4'; resultEl.style.color = '#15803d'; resultEl.style.border = '1px solid #bbf7d0';
-      resultEl.innerHTML = `<strong>Done!</strong> Imported <strong>${data.imported}</strong> registrations.${data.skipped > 0 ? ` <span style="color:#92400e">${data.skipped} skipped (missing name/email or duplicate).</span>` : ''}${data.errors.length ? '<br><small style="color:#b91c1c">' + data.errors.join('<br>') + '</small>' : ''}`;
+      const allSkipped = [...(data.skipped || []), ...(data.errors || [])];
+      let html = `<div style="color:#15803d;margin-bottom:${allSkipped.length ? '12px' : '0'}"><strong>Done!</strong> Imported <strong>${data.imported}</strong> registration${data.imported !== 1 ? 's' : ''}.`;
+      if (allSkipped.length) html += ` <span style="color:#92400e">${allSkipped.length} skipped — see details below.</span>`;
+      html += '</div>';
+      if (allSkipped.length) {
+        html += `<div style="color:#92400e;font-weight:600;margin-bottom:6px">Skipped rows:</div>`;
+        html += `<div style="max-height:220px;overflow-y:auto;border:1px solid #fde68a;border-radius:6px">`;
+        html += `<table style="width:100%;border-collapse:collapse;font-size:.82rem">`;
+        html += `<thead><tr style="background:#fef3c7"><th style="padding:6px 10px;text-align:left">Row</th><th style="padding:6px 10px;text-align:left">Name</th><th style="padding:6px 10px;text-align:left">Email</th><th style="padding:6px 10px;text-align:left">Reason</th></tr></thead><tbody>`;
+        allSkipped.forEach((s, i) => {
+          const bg = i % 2 === 0 ? '#fffbeb' : '#ffffff';
+          html += `<tr style="background:${bg}"><td style="padding:5px 10px;color:#78716c">${s.row}</td><td style="padding:5px 10px">${escHtml(s.name || '')}</td><td style="padding:5px 10px;color:#78716c">${escHtml(s.email || '—')}</td><td style="padding:5px 10px;color:#b45309">${escHtml(s.reason)}</td></tr>`;
+        });
+        html += `</tbody></table></div>`;
+      }
+      resultEl.style.background = '#fffbeb'; resultEl.style.color = '#1c1917'; resultEl.style.border = '1px solid #fde68a';
+      if (data.imported > 0) { resultEl.style.background = '#f0fdf4'; resultEl.style.border = '1px solid #bbf7d0'; }
+      resultEl.innerHTML = html;
       if (data.imported > 0) {
         btn.textContent = 'Done — Reload Page';
         btn.disabled = false;

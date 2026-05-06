@@ -281,27 +281,28 @@ router.post('/events/:id/import', upload.single('file'), async (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
   `);
 
-  let imported = 0, skipped = 0, errors = [];
+  let imported = 0, skipped = [], errors = [];
   const importAll = db.transaction(() => {
-    for (const raw of rows) {
+    for (let i = 0; i < rows.length; i++) {
+      const raw = rows[i];
       const r = normalise(raw);
-      if (!r.full_name) { skipped++; continue; }
+      const rowLabel = r.full_name || r.email || `Row ${i + 2}`;
+      if (!r.full_name) { skipped.push({ row: i + 2, name: rowLabel, reason: 'Missing name' }); continue; }
       const email = (r.email || '').toLowerCase().trim();
-      if (!email) { skipped++; continue; }
-      // Skip duplicates within this event
+      if (!email) { skipped.push({ row: i + 2, name: r.full_name, reason: 'Missing email' }); continue; }
       const existing = db.prepare('SELECT id FROM registrations WHERE event_id = ? AND email = ?').get(event.id, email);
-      if (existing) { skipped++; continue; }
+      if (existing) { skipped.push({ row: i + 2, name: r.full_name, email, reason: 'Already registered' }); continue; }
       try {
         insert.run(uuidv4(), event.id, r.full_name, email, r.phone || null, r.company || null, uuidv4(), now);
         imported++;
       } catch (e) {
-        errors.push(`Row "${r.full_name}": ${e.message}`);
+        errors.push({ row: i + 2, name: r.full_name, reason: e.message });
       }
     }
   });
 
   importAll();
-  res.json({ imported, skipped, errors: errors.slice(0, 10) });
+  res.json({ imported, skipped, errors });
 });
 
 // POST /api/checkin
