@@ -6,116 +6,100 @@
   <title>QR Scanner — Events QR Check-in</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
-<body>
-  <header class="site-header">
-    <div class="header-inner">
-      <a href="/" class="logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="4" height="4"/>
-          <rect x="9" y="14" width="4" height="4"/>
-        </svg>
-        Events QR Check-in
-      </a>
-      <nav class="site-nav">
-        <a href="/">Home</a>
-        <a href="/admin">Admin</a>
-        <a href="/scan" class="active">Scanner</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="scan-page">
-    <div class="container">
-      <div class="scan-layout">
-        <!-- Left: Scanner -->
-        <div class="scan-col-main">
-          <section class="card">
-            <div class="card-header">
-              <h2>QR Scanner</h2>
-              <div class="card-header-actions">
-                <select id="scan-event-select" onchange="onEventChange(this.value)">
-                  <option value="">Select Event</option>
-                  <% events.forEach(e => { %>
-                  <option value="<%= e.id %>"><%= e.name %></option>
-                  <% }) %>
-                </select>
-              </div>
-            </div>
-            <div class="card-body">
-              <!-- Counter -->
-              <div class="checkin-counter" id="checkin-counter" style="display:none">
-                <div class="counter-inner">
-                  <span class="counter-label">Checked In</span>
-                  <span class="counter-value"><span id="cnt-in">0</span> / <span id="cnt-total">0</span></span>
-                </div>
-              </div>
-
-              <!-- Feedback banner -->
-              <div id="scan-feedback" class="scan-feedback hidden"></div>
-
-              <!-- Camera viewfinder -->
-              <div class="scanner-wrapper">
-                <div id="qr-reader"></div>
-                <div class="scanner-placeholder" id="scanner-placeholder">
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 7V1h-6M1 7V1h6M23 17v6h-6M1 17v6h6"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                  <p>Select an event to start scanning</p>
-                </div>
-              </div>
-
-              <div class="scanner-buttons" id="scanner-buttons" style="display:none">
-                <button class="btn btn-primary" id="start-btn" onclick="startScanner()">Start Camera</button>
-                <button class="btn btn-outline hidden" id="stop-btn" onclick="stopScanner()">Stop Camera</button>
-              </div>
-            </div>
-          </section>
-
-          <!-- Session Log -->
-          <section class="card">
-            <div class="card-header">
-              <h2>Session Log</h2>
-              <button class="btn btn-sm btn-outline" onclick="clearLog()">Clear</button>
-            </div>
-            <div class="card-body">
-              <div id="session-log" class="session-log">
-                <div class="empty-state text-sm">
-                  <p>Scans will appear here.</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <!-- Right: Attendee List -->
-        <div class="scan-col-side">
-          <section class="card" style="display:flex;flex-direction:column;height:100%">
-            <div class="card-header" style="flex-shrink:0">
-              <h2>Attendees</h2>
-              <span id="list-counter-badge" class="badge" style="display:none"></span>
-            </div>
-            <div class="card-body" style="display:flex;flex-direction:column;flex:1;min-height:0;padding-bottom:0">
-              <div id="list-no-event" class="empty-state text-sm">
-                <p>Select an event to see the attendee list.</p>
-              </div>
-              <div id="attendee-list-area" style="display:none;flex:1;min-height:0;display:none;flex-direction:column">
-                <input type="text" id="attendee-search" placeholder="Search name, email or phone…" oninput="filterList()" style="margin-bottom:8px;flex-shrink:0" />
-                <div class="filter-tabs" id="filter-tabs" style="flex-shrink:0">
-                  <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">All</button>
-                  <button class="filter-tab" data-filter="out" onclick="setFilter('out')">Not In</button>
-                  <button class="filter-tab" data-filter="in" onclick="setFilter('in')">Checked In</button>
-                </div>
-                <div id="attendee-list" style="flex:1;overflow-y:auto;margin:0 -20px;padding:0 20px 16px"></div>
-              </div>
-            </div>
-          </section>
-        </div>
+<body class="scan-body">
+  <!-- Mobile sticky top bar -->
+  <div class="scan-topbar">
+    <div class="scan-topbar-inner">
+      <select id="scan-event-select" onchange="onEventChange(this.value)" class="scan-event-select">
+        <option value="">Select Event…</option>
+        <% events.forEach(e => { %>
+        <option value="<%= e.id %>"><%= e.name %></option>
+        <% }) %>
+      </select>
+      <div id="scan-topbar-counter" class="scan-topbar-counter" style="display:none">
+        <span id="cnt-in">0</span>/<span id="cnt-total">0</span>
       </div>
     </div>
-  </main>
+  </div>
 
-  <footer class="site-footer">
-    <p>Events QR Check-in &copy; <%= new Date().getFullYear() %></p>
-  </footer>
+  <!-- Mobile tab bar -->
+  <div class="scan-tab-bar" id="scan-tab-bar" style="display:none">
+    <button class="scan-tab active" data-tab="scanner" onclick="switchTab('scanner')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7V1h-6M1 7V1h6M23 17v6h-6M1 17v6h6"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Scanner
+    </button>
+    <button class="scan-tab" data-tab="list" onclick="switchTab('list')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Attendees
+      <span id="tab-not-in-badge" class="tab-badge" style="display:none"></span>
+    </button>
+    <button class="scan-tab" data-tab="log" onclick="switchTab('log')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Log
+    </button>
+  </div>
+
+  <!-- Feedback banner (fixed, shown on all tabs) -->
+  <div id="scan-feedback" class="scan-feedback hidden"></div>
+
+  <main class="scan-main">
+    <div class="scan-content">
+
+      <!-- TAB: Scanner -->
+      <div class="scan-tab-panel active" id="tab-scanner">
+        <div class="scan-desktop-header">
+          <h2>QR Scanner</h2>
+          <div class="checkin-counter-inline" id="checkin-counter-desktop" style="display:none">
+            <span class="counter-label">Checked In</span>
+            <span class="counter-value-sm"><span id="cnt-in-d">0</span> / <span id="cnt-total-d">0</span></span>
+          </div>
+        </div>
+
+        <div id="scan-feedback-desktop" class="scan-feedback hidden" style="margin-bottom:12px"></div>
+
+        <div class="scanner-wrapper">
+          <div id="qr-reader"></div>
+          <div class="scanner-placeholder" id="scanner-placeholder">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 7V1h-6M1 7V1h6M23 17v6h-6M1 17v6h6"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <p>Select an event to start scanning</p>
+          </div>
+        </div>
+
+        <div class="scanner-buttons" id="scanner-buttons" style="display:none">
+          <button class="btn btn-primary" id="start-btn" onclick="startScanner()">Start Camera</button>
+          <button class="btn btn-outline hidden" id="stop-btn" onclick="stopScanner()">Stop Camera</button>
+        </div>
+      </div>
+
+      <!-- TAB: Attendee List -->
+      <div class="scan-tab-panel" id="tab-list">
+        <div class="attendee-list-header">
+          <input type="text" id="attendee-search" placeholder="Search name, company or phone…" oninput="filterList()" class="attendee-search-input" />
+          <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">All <span id="ft-all-count" class="ft-count"></span></button>
+            <button class="filter-tab" data-filter="out" onclick="setFilter('out')">Not In <span id="ft-out-count" class="ft-count"></span></button>
+            <button class="filter-tab" data-filter="in" onclick="setFilter('in')">In <span id="ft-in-count" class="ft-count"></span></button>
+          </div>
+        </div>
+        <div id="list-no-event" class="empty-state text-sm" style="padding-top:40px">
+          <p>Select an event above to see attendees.</p>
+        </div>
+        <div id="attendee-list"></div>
+      </div>
+
+      <!-- TAB: Session Log -->
+      <div class="scan-tab-panel" id="tab-log">
+        <div class="scan-desktop-header">
+          <h2>Session Log</h2>
+          <button class="btn btn-sm btn-outline" onclick="clearLog()">Clear</button>
+        </div>
+        <div id="session-log" class="session-log">
+          <div class="empty-state text-sm"><p>Scans will appear here.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="/js/scanner.js"></script>
