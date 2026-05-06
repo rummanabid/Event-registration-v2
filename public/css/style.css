@@ -983,6 +983,76 @@ textarea { resize: vertical; }
 .manual-checked-in-label { font-size: .82rem; color: var(--green); font-weight: 600; }
 
 /* ============================================
+   Attendee List (Scan page)
+   ============================================ */
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.filter-tab {
+  flex: 1;
+  padding: 6px 0;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 6px;
+  background: white;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.filter-tab.active {
+  background: var(--navy);
+  color: white;
+  border-color: var(--navy);
+}
+
+.attendee-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.attendee-row:last-child { border-bottom: none; }
+
+.attendee-row-info { flex: 1; min-width: 0; }
+.attendee-row-name {
+  font-weight: 700;
+  font-size: .92rem;
+  color: var(--navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.attendee-row-meta {
+  font-size: .78rem;
+  color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendee-in .attendee-row-name { color: var(--gray-500); font-weight: 500; }
+.attendee-in .attendee-row-meta { color: var(--gray-400); }
+
+.attendee-status-in {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--green);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.attendee-checkin-btn {
+  flex-shrink: 0;
+  font-size: .78rem;
+  padding: 5px 12px;
+}
+
+/* ============================================
    Check-in Page
    ============================================ */
 .checkin-page {

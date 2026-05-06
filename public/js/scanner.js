@@ -3,29 +3,39 @@ let currentEventId = null;
 let sessionLog = [];
 let debounceTimer = null;
 let counterInterval = null;
+let listInterval = null;
+let allAttendees = [];
+let activeFilter = 'all';
 
 function onEventChange(eventId) {
   currentEventId = eventId;
   stopScanner();
   clearInterval(counterInterval);
+  clearInterval(listInterval);
+  allAttendees = [];
 
   if (eventId) {
     document.getElementById('scanner-placeholder').style.display = 'none';
     document.getElementById('scanner-buttons').style.display = 'flex';
-    document.getElementById('manual-no-event').style.display = 'none';
-    document.getElementById('manual-checkin-area').style.display = 'block';
+    document.getElementById('list-no-event').style.display = 'none';
+    const area = document.getElementById('attendee-list-area');
+    area.style.display = 'flex';
     document.getElementById('checkin-counter').style.display = 'block';
     updateCounter();
+    loadAttendeeList();
     counterInterval = setInterval(updateCounter, 5000);
+    listInterval = setInterval(loadAttendeeList, 5000);
   } else {
     document.getElementById('scanner-placeholder').style.display = 'flex';
     document.getElementById('scanner-buttons').style.display = 'none';
-    document.getElementById('manual-no-event').style.display = 'block';
-    document.getElementById('manual-checkin-area').style.display = 'none';
+    document.getElementById('list-no-event').style.display = 'block';
+    document.getElementById('attendee-list-area').style.display = 'none';
     document.getElementById('checkin-counter').style.display = 'none';
+    document.getElementById('list-counter-badge').style.display = 'none';
   }
 }
 
+// ---- QR Scanner ----
 async function startScanner() {
   if (!currentEventId) return;
   document.getElementById('start-btn').classList.add('hidden');
@@ -77,6 +87,7 @@ async function onQRScan(decodedText) {
     }
 
     updateCounter();
+    loadAttendeeList();
     setTimeout(() => startScanner(), 2500);
   } catch {
     showFeedback('error', '✗ Network error during check-in');
@@ -84,6 +95,7 @@ async function onQRScan(decodedText) {
   }
 }
 
+// ---- Feedback & Log ----
 function showFeedback(type, message) {
   const el = document.getElementById('scan-feedback');
   el.className = `scan-feedback ${type === 'success' ? 'success' : type === 'already' ? 'already' : 'error'}`;
@@ -127,70 +139,100 @@ async function updateCounter() {
   } catch {}
 }
 
-// Manual check-in
-function debouncedSearch(q) {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => searchRegistrations(q), 300);
-}
-
-async function searchRegistrations(q) {
+// ---- Attendee List ----
+async function loadAttendeeList() {
   if (!currentEventId) return;
-  const container = document.getElementById('manual-results');
-  if (!q.trim()) { container.innerHTML = ''; return; }
-
   try {
-    const res = await fetch(`/api/events/${currentEventId}/search-registrations?q=${encodeURIComponent(q)}`);
-    renderManualResults(await res.json());
-  } catch {
-    container.innerHTML = '<p class="text-sm text-muted">Error searching.</p>';
-  }
+    const res = await fetch(`/api/events/${currentEventId}/registrations`);
+    allAttendees = await res.json();
+    renderAttendeeList();
+    updateListBadge();
+  } catch {}
 }
 
-function renderManualResults(regs) {
-  const container = document.getElementById('manual-results');
-  if (regs.length === 0) {
-    container.innerHTML = '<p class="text-sm text-muted" style="text-align:center;padding:16px">No results found.</p>';
+function setFilter(f) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.toggle('active', t.dataset.filter === f));
+  renderAttendeeList();
+}
+
+function filterList() { renderAttendeeList(); }
+
+function renderAttendeeList() {
+  const q = (document.getElementById('attendee-search').value || '').toLowerCase();
+  let list = allAttendees.filter(r => !r.waitlisted);
+
+  if (q) {
+    list = list.filter(r =>
+      r.full_name.toLowerCase().includes(q) ||
+      r.email.toLowerCase().includes(q) ||
+      (r.phone || '').includes(q) ||
+      (r.company || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (activeFilter === 'in')  list = list.filter(r => r.checked_in);
+  if (activeFilter === 'out') list = list.filter(r => !r.checked_in);
+
+  // Sort: not-checked-in first, then alphabetical within each group
+  list.sort((a, b) => {
+    if (a.checked_in !== b.checked_in) return a.checked_in ? 1 : -1;
+    return a.full_name.localeCompare(b.full_name, undefined, { sensitivity: 'base' });
+  });
+
+  const container = document.getElementById('attendee-list');
+  if (list.length === 0) {
+    container.innerHTML = '<p class="text-sm text-muted" style="text-align:center;padding:24px 0">No attendees match.</p>';
     return;
   }
-  container.innerHTML = regs.map(r => `
-    <div class="manual-reg-card ${r.checked_in ? 'checked-in' : ''}" id="manual-card-${r.id}">
-      <div class="manual-reg-name">${escHtml(r.full_name)}${r.waitlisted ? ' <span style="font-size:.72rem;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-weight:700">Waitlist</span>' : ''}</div>
-      <div class="manual-reg-meta">${escHtml(r.email)}${r.company ? ' · ' + escHtml(r.company) : ''}${r.phone ? ' · ' + escHtml(r.phone) : ''}</div>
+
+  container.innerHTML = list.map(r => `
+    <div class="attendee-row ${r.checked_in ? 'attendee-in' : 'attendee-out'}" id="arow-${r.id}">
+      <div class="attendee-row-info">
+        <div class="attendee-row-name">${escHtml(r.full_name)}</div>
+        <div class="attendee-row-meta">${escHtml(r.company || r.email)}</div>
+      </div>
       ${r.checked_in
-        ? `<div class="manual-checked-in-label">✓ Checked in at ${new Date(r.checked_in_at).toLocaleTimeString()}</div>`
-        : `<button class="btn btn-sm btn-success" onclick="manualCheckin('${r.id}', '${escHtml(r.full_name).replace(/'/g,"\\'")}')">✓ Confirm Attendance</button>`
+        ? `<span class="attendee-status-in">✓ In</span>`
+        : `<button class="btn btn-sm btn-success attendee-checkin-btn" onclick="manualCheckin('${r.id}', '${escHtml(r.full_name).replace(/'/g,"\\'")}')">Check In</button>`
       }
     </div>
   `).join('');
 }
 
+function updateListBadge() {
+  const confirmed = allAttendees.filter(r => !r.waitlisted);
+  const checkedIn = confirmed.filter(r => r.checked_in).length;
+  const badge = document.getElementById('list-counter-badge');
+  badge.style.display = 'inline-block';
+  badge.textContent = `${checkedIn} / ${confirmed.length} in`;
+}
+
+// ---- Manual Check-in ----
 async function manualCheckin(regId, name) {
-  const btn = document.querySelector(`#manual-card-${regId} button`);
-  if (btn) { btn.disabled = true; btn.textContent = 'Checking in...'; }
+  const btn = document.querySelector(`#arow-${regId} button`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking in…'; }
 
   try {
     const res = await fetch(`/api/manual-checkin/${regId}`, { method: 'POST' });
     const data = await res.json();
 
     if (data.status === 'success') {
-      showFeedback('success', `✓ Manually checked in: ${data.attendeeName}`);
+      showFeedback('success', `✓ Checked in: ${data.attendeeName}`);
       addLog('success', data.attendeeName, 'Manual');
+      // Optimistically update local state then refresh
+      const att = allAttendees.find(r => r.id === regId);
+      if (att) { att.checked_in = 1; att.checked_in_at = new Date().toISOString(); }
+      renderAttendeeList();
+      updateListBadge();
       updateCounter();
-      const card = document.getElementById(`manual-card-${regId}`);
-      if (card) {
-        card.classList.add('checked-in');
-        card.querySelector('.btn')?.remove();
-        const label = document.createElement('div');
-        label.className = 'manual-checked-in-label';
-        label.textContent = '✓ Checked in at ' + new Date().toLocaleTimeString();
-        card.appendChild(label);
-      }
     } else if (data.status === 'already_checked_in') {
       showFeedback('already', `⚡ Already checked in: ${data.attendeeName}`);
+      loadAttendeeList();
     }
   } catch {
     showFeedback('error', '✗ Network error');
-    if (btn) { btn.disabled = false; btn.textContent = '✓ Confirm Attendance'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Check In'; }
   }
 }
 

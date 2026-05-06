@@ -86,21 +86,25 @@
           </section>
         </div>
 
-        <!-- Right: Manual Check-in -->
+        <!-- Right: Attendee List -->
         <div class="scan-col-side">
-          <section class="card">
-            <div class="card-header">
-              <h2>Manual Check-in</h2>
+          <section class="card" style="display:flex;flex-direction:column;height:100%">
+            <div class="card-header" style="flex-shrink:0">
+              <h2>Attendees</h2>
+              <span id="list-counter-badge" class="badge" style="display:none"></span>
             </div>
-            <div class="card-body">
-              <div id="manual-no-event" class="empty-state text-sm">
-                <p>Select an event above to use manual check-in.</p>
+            <div class="card-body" style="display:flex;flex-direction:column;flex:1;min-height:0;padding-bottom:0">
+              <div id="list-no-event" class="empty-state text-sm">
+                <p>Select an event to see the attendee list.</p>
               </div>
-              <div id="manual-checkin-area" style="display:none">
-                <div class="form-group">
-                  <input type="text" id="manual-search" placeholder="Search name, email, or phone..." oninput="debouncedSearch(this.value)" />
+              <div id="attendee-list-area" style="display:none;flex:1;min-height:0;display:none;flex-direction:column">
+                <input type="text" id="attendee-search" placeholder="Search name, email or phone…" oninput="filterList()" style="margin-bottom:8px;flex-shrink:0" />
+                <div class="filter-tabs" id="filter-tabs" style="flex-shrink:0">
+                  <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">All</button>
+                  <button class="filter-tab" data-filter="out" onclick="setFilter('out')">Not In</button>
+                  <button class="filter-tab" data-filter="in" onclick="setFilter('in')">Checked In</button>
                 </div>
-                <div id="manual-results" class="manual-results"></div>
+                <div id="attendee-list" style="flex:1;overflow-y:auto;margin:0 -20px;padding:0 20px 16px"></div>
               </div>
             </div>
           </section>
