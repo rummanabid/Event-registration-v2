@@ -83,6 +83,24 @@ router.get('/events/:id/registrations', (req, res) => {
   res.json(regs);
 });
 
+// DELETE /api/registrations/:id
+router.delete('/registrations/:id', (req, res) => {
+  const db = getDb();
+  const reg = db.prepare('SELECT * FROM registrations WHERE id = ?').get(req.params.id);
+  if (!reg) return res.status(404).json({ error: 'Registration not found' });
+  db.prepare('DELETE FROM registrations WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// DELETE /api/events/:id/registrations
+router.delete('/events/:id/registrations', (req, res) => {
+  const db = getDb();
+  const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+  db.prepare('DELETE FROM registrations WHERE event_id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
 // GET /api/events/:id/registrations/csv
 router.get('/events/:id/registrations/csv', (req, res) => {
   const db = getDb();
@@ -163,15 +181,22 @@ router.post('/register', async (req, res) => {
   const db = getDb();
   const { event_id, full_name, email, phone, company, custom_data } = req.body;
 
-  if (!event_id || !full_name || !email) {
-    return res.status(400).json({ error: 'event_id, full_name, and email are required' });
+  if (!event_id || !full_name) {
+    return res.status(400).json({ error: 'event_id and full_name are required' });
   }
 
   const event = db.prepare('SELECT * FROM events WHERE id = ?').get(event_id);
   if (!event) return res.status(404).json({ error: 'Event not found' });
 
-  // Duplicate check
-  const existing = db.prepare('SELECT id, qr_token FROM registrations WHERE event_id = ? AND email = ? AND waitlisted = 0').get(event_id, email.toLowerCase().trim());
+  const emailVal = email ? email.toLowerCase().trim() : null;
+
+  // Duplicate check: by email if provided, otherwise by name+company
+  let existing = null;
+  if (emailVal) {
+    existing = db.prepare('SELECT id, qr_token FROM registrations WHERE event_id = ? AND email = ? AND waitlisted = 0').get(event_id, emailVal);
+  } else if (company) {
+    existing = db.prepare('SELECT id, qr_token FROM registrations WHERE event_id = ? AND lower(full_name) = lower(?) AND lower(company) = lower(?) AND waitlisted = 0').get(event_id, full_name, company);
+  }
   if (existing) {
     return res.status(409).json({ error: 'ALREADY_REGISTERED', registrationId: existing.id });
   }
@@ -187,7 +212,7 @@ router.post('/register', async (req, res) => {
   db.prepare(`
     INSERT INTO registrations (id, event_id, full_name, email, phone, company, custom_data, qr_token, checked_in, waitlisted, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-  `).run(id, event_id, full_name, email.toLowerCase().trim(), phone || null, company || null, custom_data ? JSON.stringify(custom_data) : null, qrToken, isWaitlisted, now);
+  `).run(id, event_id, full_name, emailVal, phone || null, company || null, custom_data ? JSON.stringify(custom_data) : null, qrToken, isWaitlisted, now);
 
   const baseUrl = getBaseUrl(req);
   const qrUrl = `${baseUrl}/checkin/${qrToken}`;

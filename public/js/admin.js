@@ -121,7 +121,7 @@ function renderTable(regs, fields) {
     return;
   }
 
-  const cols = ['Full Name', 'Email', 'Phone', 'Company', ...fields.map(f => f.label), 'Status', 'Checked In', 'Registered At'];
+  const cols = ['Full Name', 'Email', 'Phone', 'Company', ...fields.map(f => f.label), 'Status', 'Checked In', 'Registered At', ''];
   const thead = `<tr>${cols.map(c => `<th>${escHtml(c)}</th>`).join('')}</tr>`;
 
   const tbody = regs.map(r => {
@@ -132,12 +132,14 @@ function renderTable(regs, fields) {
     const checkinCell = r.checked_in
       ? '<span class="checked-in-yes">✓ Yes</span>'
       : '<span class="checked-in-no">✗ No</span>';
+    const deleteCell = `<button class="btn btn-sm btn-danger" style="padding:3px 10px;font-size:.75rem" onclick="deleteReg('${r.id}','${escHtml(r.full_name).replace(/'/g,"\\'")}')">✕</button>`;
 
     const cells = [
-      escHtml(r.full_name), escHtml(r.email), escHtml(r.phone || ''), escHtml(r.company || ''),
+      escHtml(r.full_name), escHtml(r.email || ''), escHtml(r.phone || ''), escHtml(r.company || ''),
       ...fields.map(f => escHtml(custom[f.id] || '')),
       statusCell, checkinCell,
-      escHtml(new Date(r.created_at).toLocaleString())
+      escHtml(new Date(r.created_at).toLocaleString()),
+      deleteCell
     ];
     return `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
   }).join('');
@@ -162,6 +164,79 @@ function filterRegs(q) {
 function exportData(type) {
   if (!currentEventId) return;
   window.open(`/api/events/${currentEventId}/registrations/${type}`, '_blank');
+}
+
+// ---- Delete individual registration ----
+async function deleteReg(id, name) {
+  if (!confirm(`Remove "${name}" from this event?`)) return;
+  const res = await fetch(`/api/registrations/${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    allRegistrations = allRegistrations.filter(r => r.id !== id);
+    renderTable(allRegistrations, window._cachedFields || []);
+  } else {
+    alert('Failed to delete registration');
+  }
+}
+
+// ---- Delete all registrations ----
+async function deleteAllRegs() {
+  if (!currentEventId) return;
+  if (!confirm('Delete ALL registrations for this event? This cannot be undone.')) return;
+  const res = await fetch(`/api/events/${currentEventId}/registrations`, { method: 'DELETE' });
+  if (res.ok) {
+    allRegistrations = [];
+    renderTable([], window._cachedFields || []);
+  } else {
+    alert('Failed to delete registrations');
+  }
+}
+
+// ---- Add single registration ----
+function openAddReg() {
+  if (!currentEventId) return;
+  document.getElementById('add-reg-name').value = '';
+  document.getElementById('add-reg-company').value = '';
+  document.getElementById('add-reg-email').value = '';
+  document.getElementById('add-reg-phone').value = '';
+  document.getElementById('add-reg-error').style.display = 'none';
+  document.getElementById('add-reg-modal').classList.remove('hidden');
+}
+
+async function submitAddReg() {
+  const name    = document.getElementById('add-reg-name').value.trim();
+  const company = document.getElementById('add-reg-company').value.trim();
+  const email   = document.getElementById('add-reg-email').value.trim();
+  const phone   = document.getElementById('add-reg-phone').value.trim();
+  const errEl   = document.getElementById('add-reg-error');
+
+  if (!name || !company) {
+    errEl.textContent = 'Name and Company / Job Title are required.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('add-reg-submit');
+  btn.disabled = true; btn.textContent = 'Adding…';
+
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_id: currentEventId, full_name: name, email: email || null, phone: phone || null, company })
+    });
+    const data = await res.json();
+    if (res.ok || res.status === 201) {
+      closeModal('add-reg-modal');
+      await loadRegistrations(currentEventId, '');
+    } else {
+      errEl.textContent = data.error || 'Failed to add registration';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Network error';
+    errEl.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Add Registration';
 }
 
 function escHtml(str) {
