@@ -53,7 +53,7 @@ function migrate() {
       id TEXT PRIMARY KEY,
       event_id TEXT NOT NULL,
       full_name TEXT NOT NULL,
-      email TEXT NOT NULL,
+      email TEXT,
       phone TEXT,
       company TEXT,
       custom_data TEXT,
@@ -73,6 +73,33 @@ function migrate() {
   safeAlter('ALTER TABLE events ADD COLUMN time TEXT');
   safeAlter('ALTER TABLE events ADD COLUMN end_time TEXT');
   safeAlter('ALTER TABLE registrations ADD COLUMN waitlisted INTEGER NOT NULL DEFAULT 0');
+
+  // Drop NOT NULL constraint on registrations.email by recreating the table
+  const emailNotNull = db.prepare(`SELECT "notnull" FROM pragma_table_info('registrations') WHERE name='email'`).get();
+  if (emailNotNull && emailNotNull.notnull === 1) {
+    db.exec(`
+      PRAGMA foreign_keys = OFF;
+      CREATE TABLE registrations_new (
+        id TEXT PRIMARY KEY,
+        event_id TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        email TEXT,
+        phone TEXT,
+        company TEXT,
+        custom_data TEXT,
+        qr_token TEXT UNIQUE NOT NULL,
+        checked_in INTEGER NOT NULL DEFAULT 0,
+        checked_in_at TEXT,
+        waitlisted INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+      );
+      INSERT INTO registrations_new SELECT * FROM registrations;
+      DROP TABLE registrations;
+      ALTER TABLE registrations_new RENAME TO registrations;
+      PRAGMA foreign_keys = ON;
+    `);
+  }
 }
 
 module.exports = { getDb };
