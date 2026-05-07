@@ -271,13 +271,13 @@ router.post('/events/:id/import', upload.single('file'), async (req, res) => {
       full_name: get('full name', 'fullname', 'name', 'full_name', 'attendee name', 'attendee'),
       email:     get('email', 'email address', 'e-mail', 'e_mail'),
       phone:     get('phone', 'phone number', 'mobile', 'mobile number', 'cell', 'telephone'),
-      company:   get('company', 'company name', 'organisation', 'organization', 'employer'),
+      company:   get('company', 'company name', 'organisation', 'organization', 'employer', 'job title', 'jobtitle', 'title', 'position', 'role'),
     };
   };
 
   const now = new Date().toISOString();
   const insert = db.prepare(`
-    INSERT OR IGNORE INTO registrations (id, event_id, full_name, email, phone, company, qr_token, checked_in, waitlisted, created_at)
+    INSERT INTO registrations (id, event_id, full_name, email, phone, company, qr_token, checked_in, waitlisted, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
   `);
 
@@ -286,14 +286,17 @@ router.post('/events/:id/import', upload.single('file'), async (req, res) => {
     for (let i = 0; i < rows.length; i++) {
       const raw = rows[i];
       const r = normalise(raw);
-      const rowLabel = r.full_name || r.email || `Row ${i + 2}`;
+      const rowLabel = r.full_name || `Row ${i + 2}`;
       if (!r.full_name) { skipped.push({ row: i + 2, name: rowLabel, reason: 'Missing name' }); continue; }
-      const email = (r.email || '').toLowerCase().trim();
-      if (!email) { skipped.push({ row: i + 2, name: r.full_name, reason: 'Missing email' }); continue; }
-      const existing = db.prepare('SELECT id FROM registrations WHERE event_id = ? AND email = ?').get(event.id, email);
-      if (existing) { skipped.push({ row: i + 2, name: r.full_name, email, reason: 'Already registered' }); continue; }
+      if (!r.company)   { skipped.push({ row: i + 2, name: r.full_name, reason: 'Missing job title / company' }); continue; }
+      const email = (r.email || '').toLowerCase().trim() || null;
+      // Duplicate check: same name + company (case-insensitive) within this event
+      const existing = db.prepare(
+        'SELECT id FROM registrations WHERE event_id = ? AND lower(full_name) = lower(?) AND lower(company) = lower(?)'
+      ).get(event.id, r.full_name, r.company);
+      if (existing) { skipped.push({ row: i + 2, name: r.full_name, reason: 'Already registered' }); continue; }
       try {
-        insert.run(uuidv4(), event.id, r.full_name, email, r.phone || null, r.company || null, uuidv4(), now);
+        insert.run(uuidv4(), event.id, r.full_name, email, r.phone || null, r.company, uuidv4(), now);
         imported++;
       } catch (e) {
         errors.push({ row: i + 2, name: r.full_name, reason: e.message });
