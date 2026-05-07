@@ -156,7 +156,7 @@ function filterRegs(q) {
   if (!allRegistrations.length) return;
   const lower = q.toLowerCase();
   const filtered = allRegistrations.filter(r =>
-    r.full_name.toLowerCase().includes(lower) || r.email.toLowerCase().includes(lower) || (r.phone || '').includes(q)
+    r.full_name.toLowerCase().includes(lower) || (r.email || '').toLowerCase().includes(lower) || (r.phone || '').includes(q) || (r.company || '').toLowerCase().includes(lower)
   );
   renderTable(filtered, window._cachedFields || []);
 }
