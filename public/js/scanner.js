@@ -1,11 +1,21 @@
 let html5QrCode = null;
 let currentEventId = null;
 let sessionLog = [];
-let counterInterval = null;
-let listInterval = null;
+let refreshInterval = null;
 let allAttendees = [];
 let activeFilter = 'all';
 let activeTab = 'scanner';
+
+// Pause refresh when tab/screen is hidden, resume immediately on return
+document.addEventListener('visibilitychange', () => {
+  if (!currentEventId) return;
+  if (document.hidden) {
+    clearInterval(refreshInterval);
+  } else {
+    loadAttendeeList();
+    refreshInterval = setInterval(loadAttendeeList, 5000);
+  }
+});
 
 // ---- Tab switching ----
 function switchTab(tab) {
@@ -19,8 +29,7 @@ function switchTab(tab) {
 function onEventChange(eventId) {
   currentEventId = eventId;
   stopScanner();
-  clearInterval(counterInterval);
-  clearInterval(listInterval);
+  clearInterval(refreshInterval);
   allAttendees = [];
 
   const tabBar = document.getElementById('scan-tab-bar');
@@ -34,10 +43,8 @@ function onEventChange(eventId) {
     document.getElementById('scan-topbar-counter').style.display = 'flex';
     noEvent.style.display = 'none';
     attendeeList.style.display = 'block';
-    updateCounter();
     loadAttendeeList();
-    counterInterval = setInterval(updateCounter, 5000);
-    listInterval   = setInterval(loadAttendeeList, 5000);
+    refreshInterval = setInterval(loadAttendeeList, 5000);
   } else {
     tabBar.style.display = 'none';
     document.getElementById('scanner-placeholder').style.display = 'flex';
@@ -102,7 +109,6 @@ async function onQRScan(decodedText) {
       addLog('error', 'Unknown', 'Invalid');
     }
 
-    updateCounter();
     loadAttendeeList();
     setTimeout(() => startScanner(), 2500);
   } catch {
@@ -153,16 +159,6 @@ function clearLog() {
   document.querySelector('[data-tab="log"]')?.classList.remove('has-update');
 }
 
-// ---- Counter ----
-async function updateCounter() {
-  if (!currentEventId) return;
-  try {
-    const res = await fetch(`/api/events/${currentEventId}/checkin-count`);
-    const d = await res.json();
-    document.getElementById('cnt-in').textContent  = d.checkedIn;
-    document.getElementById('cnt-total').textContent = d.total;
-  } catch {}
-}
 
 // ---- Attendee List ----
 async function loadAttendeeList() {
