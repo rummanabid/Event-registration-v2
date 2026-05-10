@@ -106,10 +106,8 @@ router.get('/badges/:eventId', requirePin, async (req, res) => {
 
   const registrations = db.prepare('SELECT * FROM registrations WHERE event_id = ? AND waitlisted = 0 ORDER BY full_name').all(req.params.eventId);
 
-  const baseUrl = getBaseUrl(req);
   const badgesWithQR = await Promise.all(registrations.map(async r => {
-    const qrUrl = `${baseUrl}/checkin/${r.qr_token}`;
-    const qrDataUrl = await generateQRDataURL(qrUrl);
+    const qrDataUrl = await generateQRDataURL(r.qr_token);
     return { ...r, qrDataUrl };
   }));
 
@@ -149,11 +147,10 @@ router.get('/register-success', async (req, res) => {
   if (!reg) return res.redirect('/');
 
   const baseUrl = getBaseUrl(req);
-  const qrUrl = `${baseUrl}/checkin/${reg.qr_token}`;
-  const qrDataUrl = reg.waitlisted ? null : await generateQRDataURL(qrUrl);
+  const qrDataUrl = reg.waitlisted ? null : await generateQRDataURL(reg.qr_token);
   const isEmbed = req.query.embed === 'true';
 
-  res.render('success', { reg, qrDataUrl, qrUrl, formatDate, formatTime, isEmbed, baseUrl });
+  res.render('success', { reg, qrDataUrl, formatDate, formatTime, isEmbed, baseUrl });
 });
 
 // QR Scanner
@@ -163,20 +160,9 @@ router.get('/scan', requirePin, (req, res) => {
   res.render('scan', { events, formatDate });
 });
 
-// Direct check-in page
+// QR token landing — no auto check-in, just a neutral page
 router.get('/checkin/:qrToken', (req, res) => {
-  const db = getDb();
-  const token = req.params.qrToken;
-
-  const reg = db.prepare('SELECT r.*, e.name as event_name, e.date as event_date, e.location as event_location FROM registrations r JOIN events e ON r.event_id = e.id WHERE r.qr_token = ?').get(token);
-
-  if (!reg) return res.render('checkin', { status: 'invalid', reg: null, formatDate });
-  if (reg.checked_in) return res.render('checkin', { status: 'already_checked_in', reg, formatDate });
-
-  const now = new Date().toISOString();
-  db.prepare('UPDATE registrations SET checked_in = 1, checked_in_at = ? WHERE qr_token = ?').run(now, token);
-  reg.checked_in_at = now;
-  res.render('checkin', { status: 'success', reg, formatDate });
+  res.render('checkin-landing');
 });
 
 // .ics calendar download

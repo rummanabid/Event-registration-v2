@@ -215,12 +215,11 @@ router.post('/register', async (req, res) => {
   `).run(id, event_id, full_name, emailVal, phone || null, company || null, custom_data ? JSON.stringify(custom_data) : null, qrToken, isWaitlisted, now);
 
   const baseUrl = getBaseUrl(req);
-  const qrUrl = `${baseUrl}/checkin/${qrToken}`;
-  const qrDataUrl = isWaitlisted ? null : await generateQRDataURL(qrUrl);
+  const qrDataUrl = isWaitlisted ? null : await generateQRDataURL(qrToken);
 
   // Auto-send QR email if SMTP configured and not waitlisted
-  if (!isWaitlisted && isEmailConfigured()) {
-    const qrBuffer = await generateQRBuffer(qrUrl);
+  if (!isWaitlisted && isEmailConfigured() && emailVal) {
+    const qrBuffer = await generateQRBuffer(qrToken);
     sendQRCodeEmail({
       to: email,
       attendeeName: full_name,
@@ -232,7 +231,7 @@ router.post('/register', async (req, res) => {
     }).catch(() => {}); // fire and forget
   }
 
-  res.status(201).json({ id, qrToken, qrDataUrl, qrUrl, waitlisted: isWaitlisted === 1 });
+  res.status(201).json({ id, qrToken, qrDataUrl, waitlisted: isWaitlisted === 1 });
 });
 
 // POST /api/events/:id/import  (CSV or XLSX bulk import)
@@ -435,9 +434,7 @@ router.post('/email-qr', async (req, res) => {
   const reg = db.prepare('SELECT r.*, e.name as event_name, e.date as event_date, e.location as event_location, e.slug as event_slug FROM registrations r JOIN events e ON r.event_id = e.id WHERE r.id = ?').get(registrationId);
   if (!reg) return res.status(404).json({ error: 'Registration not found' });
 
-  const baseUrl = getBaseUrl(req);
-  const qrUrl = `${baseUrl}/checkin/${reg.qr_token}`;
-  const qrBuffer = await generateQRBuffer(qrUrl);
+  const qrBuffer = await generateQRBuffer(reg.qr_token);
 
   try {
     await sendQRCodeEmail({ to: email, attendeeName: reg.full_name, eventName: reg.event_name, eventDate: reg.event_date, eventLocation: reg.event_location, qrBuffer, eventSlug: reg.event_slug });
@@ -453,9 +450,7 @@ router.get('/qr/:qrToken.png', async (req, res) => {
   const reg = db.prepare('SELECT * FROM registrations WHERE qr_token = ?').get(req.params.qrToken);
   if (!reg) return res.status(404).send('Not found');
 
-  const baseUrl = getBaseUrl(req);
-  const qrUrl = `${baseUrl}/checkin/${req.params.qrToken}`;
-  const buffer = await generateQRBuffer(qrUrl);
+  const buffer = await generateQRBuffer(req.params.qrToken);
   res.setHeader('Content-Type', 'image/png');
   res.setHeader('Content-Disposition', `attachment; filename="qr-${req.params.qrToken}.png"`);
   res.send(buffer);
@@ -624,8 +619,7 @@ router.get('/events/:id/badges/illustrator', async (req, res) => {
   for (let i = 0; i < registrations.length; i++) {
     const r = registrations[i];
     const filename = `${String(i + 1).padStart(pad, '0')}_${safeName(r.full_name)}.png`;
-    const qrUrl = `${baseUrl}/checkin/${r.qr_token}`;
-    const qrBuffer = await generateQRBuffer(qrUrl);
+    const qrBuffer = await generateQRBuffer(r.qr_token);
     archive.append(qrBuffer, { name: filename });
   }
 

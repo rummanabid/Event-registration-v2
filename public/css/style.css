@@ -56,6 +56,10 @@ main { flex: 1; }
 /* ============================================
    Header
    ============================================ */
+/* Hide site chrome on the scan-only page */
+.scan-only .site-header,
+.scan-only .site-footer { display: none; }
+
 .site-header {
   background: var(--navy);
   color: white;
